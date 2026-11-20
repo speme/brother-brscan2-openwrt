@@ -22,9 +22,9 @@ SANE service succeeded after granting the `scanner` group USB-node access.
 Release `r2` installs the USB ID marker so the OpenWrt SANE hotplug handler
 grants that access automatically on future USB attach events. Release `r3`
 assembles separate R, G, and B scan lines into interleaved RGB rows and swaps
-BGR input when needed. This addresses the three-band output observed with
-`r2`; color remains a candidate until confirmed with a full-page MFC-7420 scan.
-Grayscale is the physically verified mode.
+BGR input when needed. A full-page MFC-7420 color scan confirmed that the
+three-band output is fixed. Release `r4` adds Brother's MFC-7420 color LUT at
+`GrayCmData/ALL/brmsl08f.cm`; the `.cm` file retains Brother's license.
 
 To install the native test build on this Ubuntu x86_64 system:
 
@@ -43,7 +43,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r3.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r4.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to

@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=brother-brscan2
 PKG_VERSION:=0.2.5
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE:=brscan2-src-$(PKG_VERSION)-1.tar.gz
 PKG_SOURCE_SUBDIR:=brscan2-src-$(PKG_VERSION)-1/brscan
@@ -85,7 +85,7 @@ define Build/Compile
 endef
 
 define Package/brother-brscan2/install
-	$(INSTALL_DIR) $(1)/usr/lib/sane $(1)/usr/lib $(1)/usr/share/sane/brother $(1)/usr/share/sane
+	$(INSTALL_DIR) $(1)/usr/lib/sane $(1)/usr/lib $(1)/usr/share/sane/brother/GrayCmData/ALL $(1)/usr/share/sane
 	$(INSTALL_BIN) $(BRSCAN_DIR)/backend_brscan2/.libs/libsane-brother2.so.1.0.7 $(1)/usr/lib/sane/
 	$(LN) libsane-brother2.so.1.0.7 $(1)/usr/lib/sane/libsane-brother2.so.1
 	$(INSTALL_BIN) $(BRSCAN_DIR)/libbrscandec2/libbrscandec2.so.1.0.0 $(1)/usr/lib/
@@ -95,6 +95,7 @@ define Package/brother-brscan2/install
 	$(LN) libbrcolm2.so.1.0.0 $(1)/usr/lib/libbrcolm2.so.1
 	$(LN) libbrcolm2.so.1 $(1)/usr/lib/libbrcolm2.so
 	$(INSTALL_DATA) $(BRSCAN_DIR)/mk_package/Brsane2.ini $(1)/usr/share/sane/brother/
+	$(INSTALL_DATA) ./files/GrayCmData/ALL/brmsl08f.cm $(1)/usr/share/sane/brother/GrayCmData/ALL/
 	$(INSTALL_DATA) ./files/04f9-brscan2.usbid $(1)/usr/share/sane/
 	$(INSTALL_DIR) $(1)/etc/sane.d/dll.d
 	$(INSTALL_DATA) ./files/brother2.conf $(1)/etc/sane.d/dll.d/
