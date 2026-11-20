@@ -20,7 +20,11 @@ exercised on a Lenovo Newifi Y1 with OpenWrt
 25.12.6 and a Brother MFC-7420 (`04f9:0180`). A gray scan through the network
 SANE service succeeded after granting the `scanner` group USB-node access.
 Release `r2` installs the USB ID marker so the OpenWrt SANE hotplug handler
-grants that access automatically on future USB attach events.
+grants that access automatically on future USB attach events. Release `r3`
+assembles separate R, G, and B scan lines into interleaved RGB rows and swaps
+BGR input when needed. This addresses the three-band output observed with
+`r2`; color remains a candidate until confirmed with a full-page MFC-7420 scan.
+Grayscale is the physically verified mode.
 
 To install the native test build on this Ubuntu x86_64 system:
 
@@ -39,7 +43,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r2.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r3.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
