@@ -1,0 +1,5 @@
+Portable replacement library source is derived from dmikushin/brscan and is
+distributed under GPL version 2. The original Brother SANE backend source is
+covered by the GNU General Public License, version 2 or later, as stated in
+the source files. Consult the upstream license files shipped in their source
+archives for the complete license terms.

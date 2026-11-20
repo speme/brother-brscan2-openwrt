@@ -1,0 +1,10 @@
+*.apk
+*.deb
+*.ipk
+*.o
+*.so
+*.lmo
+*.mo
+output/
+build_dir/
+staging_dir/
