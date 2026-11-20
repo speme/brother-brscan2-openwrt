@@ -1,0 +1,14 @@
+--- a/brscan/backend_src/brother_scanner.c
++++ b/brscan/backend_src/brother_scanner.c
+@@ -1120,6 +1120,11 @@
+ 
+ 	WriteLog( "<<<<< PageScan End <<<<< nFwLenTotal = %d lpFwLen = %d ",nFwLenTotal, *lpFwLen);
+ 
++	if (nAnswer == SCAN_EOF && *lpFwLen == 0)
++		fprintf(stderr, "brother2 scan summary: rows=%ld/%ld bytes=%ld row_bytes=%ld\n",
++		        (long)lRealY, (long)this->scanInfo.ScanAreaSize.lHeight,
++		        (long)nFwLenTotal, (long)this->scanInfo.ScanAreaByte.lWidth);
++
+ 	return rc;
+ }
+ #elif  BRSANESUFFIX == 1

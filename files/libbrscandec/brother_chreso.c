@@ -25,6 +25,7 @@ static size_t g_pixel_count;
 static size_t g_rgb_line_bytes;
 static uint8_t *g_rgb_line;
 static unsigned g_rgb_line_mask;
+static uint8_t g_white_value;
 
 ulong ChangeResoInit(undefined8 *opaque)
 {
@@ -41,6 +42,7 @@ ulong ChangeResoInit(undefined8 *opaque)
 	g_pixel_count = (size_t)pixels;
 	g_rgb_line_bytes = (size_t)line_bytes;
 	g_rgb_line_mask = 0;
+	g_white_value = (color_type & (1u << 8)) ? 0 : 255;
 	if (bytes_per_pixel == 3) {
 		g_rgb_line = malloc(g_rgb_line_bytes);
 		if (!g_rgb_line)
@@ -78,11 +80,14 @@ long ChangeResoWrite(void *opaque, undefined4 *lines_written)
 
 	/* Monochrome and indexed modes already arrive as one complete line. */
 	if (!g_rgb_line) {
-		if (size > capacity)
+		if (size > g_rgb_line_bytes || capacity < g_rgb_line_bytes)
 			return 0;
+		/* PackBits rows may omit trailing white pixels. The caller counts
+		 * a full raster, so return a full raster even for an empty row. */
+		memset(dst, g_white_value, g_rgb_line_bytes);
 		memcpy(dst, src, (size_t)size);
 		*lines_written = 1;
-		return (long)size;
+		return (long)g_rgb_line_bytes;
 	}
 
 	/* Brother sends either one RGB/BGR pixel line, or three separate

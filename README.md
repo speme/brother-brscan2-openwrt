@@ -37,6 +37,11 @@ adding the row to the output byte count, which could drop rows and truncate
 page content. A synthetic packet regression fails on the upstream handler
 and passes on the patched handler with sanitizers. Hardware confirmation is
 still required after installing this release.
+The reported 300 dpi edge problem persisted with `r7`: the backend still
+advertised 3506 rows but delivered 3460 rows. `r8` is a test build that pads
+short grayscale rasters to the configured row width and reports row/byte
+counts at the end of a scan. Empty and truncated input regression cases
+pass with sanitizers; a new hardware scan is required to confirm the result.
 
 To install the native test build on this Ubuntu x86_64 system:
 
@@ -55,7 +60,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r7.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r8.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
