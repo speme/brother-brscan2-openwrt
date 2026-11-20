@@ -1,0 +1,105 @@
+--- a/brscan/backend_src/brother_scanner.c
++++ b/brscan/backend_src/brother_scanner.c
+@@ -65,6 +65,9 @@
+ DWORD	dwRxBuffMaxSize= 0;
+ 
+ LONG lRealY = 0;
++static size_t scan_padding_remaining;
++static int scan_padding_active;
++static LONG scan_received_rows;
+ 
+ HANDLE	hGray;			//Gray table from brgray.bin
+ 
+@@ -456,6 +459,9 @@
+ 		return SANE_STATUS_INVAL;
+ 	}
+ 
++	scan_padding_remaining = 0;
++	scan_padding_active = 0;
++	scan_received_rows = 0;
+ 	nPageScanCnt = 0;	// clear the debug-counter 
+ 
+ 	nReadCnt = 0;	// clear the debug-counter 
+@@ -1021,42 +1027,34 @@
+ #ifdef NO39_DEBUG
+ 	gettimeofday(&save_tv, &save_tz);
+ #endif
+-	if ( nAnswer == SCAN_EOF || nAnswer == SCAN_MPS )  {
+-
+-		if (FwTempBuffLength != 0 ) { 
++	if ( nAnswer == SCAN_EOF || nAnswer == SCAN_MPS ) {
++		int available = nMaxLen - *lpFwLen;
++		size_t count;
++		size_t row_bytes = this->scanInfo.ScanAreaByte.lWidth;
++		LONG height = this->scanInfo.ScanAreaSize.lHeight;
++
++		if (FwTempBuffLength != 0)
+ 			return rc;
+-		}
+-		else {	
+-			// clear the rest area to white ,if the size of received data is less than the specified size 
+-			if( lRealY < this->scanInfo.ScanAreaSize.lHeight ){
+-				// the case that it becomes page-end status before the received data fills  the area of specified size.
+-				int nHeightLen = this->scanInfo.ScanAreaSize.lHeight - lRealY;
+-				int nSize = this->scanInfo.ScanAreaByte.lWidth * nHeightLen; 
+-				int nMaxSize = nMaxLen - *lpFwLen;
+-				int nMaxLine;
+-				int nVal;
+-	
+-				if (this->devScanInfo.wColorType < COLOR_TG)
+-					nVal = 0x00;
+-				else
+-					nVal = 0xFF;
+-					
+-				if ( nSize < nMaxSize ) {
+-					memset(lpFwBuf+*lpFwLen, nVal, nSize);
+-					*lpFwLen += nSize;
+-					lRealY += nHeightLen;
+-					WriteLog( "PageScan AddSpace End lRealY = %d, nHeightLen = %d nSize = %d nMaxSize = %d *lpFwLen = %d",
+-					lRealY, nHeightLen, nSize, nMaxSize, *lpFwLen );
+-				}
+-				else {
+-					memset(lpFwBuf+*lpFwLen, nVal, nMaxSize);
+-					nMaxLine = nMaxSize / this->scanInfo.ScanAreaByte.lWidth;
+-					*lpFwLen += this->scanInfo.ScanAreaByte.lWidth * nMaxLine;
+-					lRealY += nMaxLine;
+-					WriteLog( "PageScan AddSpace lRealY = %d, nHeightLen = %d nSize = %d nMaxSize = %d *lpFwLen = %d",
+-					lRealY, nHeightLen, nSize, nMaxSize, *lpFwLen );
+-				}
+-			}
++
++		if (!scan_padding_active) {
++			scan_received_rows = lRealY;
++			scan_padding_remaining = lRealY < height
++				? (size_t)(height - lRealY) * row_bytes : 0;
++			scan_padding_active = 1;
++		}
++
++		/* SANE read buffers need not contain a whole raster. Keep the
++		 * unreturned bytes for the next call instead of rounding down
++		 * to zero rows and prematurely reporting EOF. */
++		count = available > 0 ? (size_t)available : 0;
++		if (count > scan_padding_remaining)
++			count = scan_padding_remaining;
++		if (count) {
++			memset(lpFwBuf + *lpFwLen,
++			       this->devScanInfo.wColorType < COLOR_TG ? 0 : 255, count);
++			*lpFwLen += count;
++			scan_padding_remaining -= count;
++			lRealY = height - (scan_padding_remaining + row_bytes - 1) / row_bytes;
+ 		}
+ 	}
+ 
+@@ -1121,9 +1119,10 @@
+ 	WriteLog( "<<<<< PageScan End <<<<< nFwLenTotal = %d lpFwLen = %d ",nFwLenTotal, *lpFwLen);
+ 
+ 	if (nAnswer == SCAN_EOF && *lpFwLen == 0)
+-		fprintf(stderr, "brother2 scan summary: rows=%ld/%ld bytes=%ld row_bytes=%ld\n",
++		fprintf(stderr, "brother2 scan summary: rows=%ld/%ld bytes=%ld row_bytes=%ld received_rows=%ld\n",
+ 		        (long)lRealY, (long)this->scanInfo.ScanAreaSize.lHeight,
+-		        (long)nFwLenTotal, (long)this->scanInfo.ScanAreaByte.lWidth);
++		        (long)nFwLenTotal, (long)this->scanInfo.ScanAreaByte.lWidth,
++		        (long)scan_received_rows);
+ 
+ 	return rc;
+ }

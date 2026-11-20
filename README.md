@@ -42,6 +42,12 @@ advertised 3506 rows but delivered 3460 rows. `r8` is a test build that pads
 short grayscale rasters to the configured row width and reports row/byte
 counts at the end of a scan. Empty and truncated input regression cases
 pass with sanitizers; a new hardware scan is required to confirm the result.
+`r8` also returned 3460/3506 rows on the scanner. `r9` fixes a separate
+premature EOF in end-of-page padding: read buffers smaller than a raster
+were rounded down to zero rows and interpreted as EOF. Padding now streams
+across arbitrary positive read sizes. The summary includes `received_rows`
+before padding, so a correctly sized output is distinguishable from missing
+image content. This fix does not recover content the device did not send.
 
 To install the native test build on this Ubuntu x86_64 system:
 
@@ -60,7 +66,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r8.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r9.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -113,6 +119,7 @@ To test the white-row fix against the prepared upstream source:
 
 ```sh
 python3 tests/white-line-accounting.py path/to/brscan/backend_src/brother_scanner.c
+python3 tests/eof-padding.py path/to/brscan/backend_src/brother_scanner.c
 ```
 
 ## Licensing
