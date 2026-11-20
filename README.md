@@ -99,6 +99,14 @@ has caused `scanimage` to segfault on the tested OpenWrt router and its cause
 has not yet been established. Scaling is not implemented by this decoder;
 scan resolutions other than those tested may produce incorrect results.
 
+For the 300 dpi flatbed edge issue, see
+[Windows MFC-7420 geometry analysis](docs/windows-mfc7420-geometry.md).
+The supplied Windows TWAIN DLL computes the same 3437-row effective A4
+height observed from the device; r9 pads that input to the SANE frame size.
+The analysis includes the model parameters and a machine-code emulator
+probe, and distinguishes the range calculation from the unverified final
+Windows output layout.
+
 ## Build
 
 Build with the matching OpenWrt 25.12 SDK and `packages` feed enabled:
