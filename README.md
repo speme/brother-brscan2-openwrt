@@ -49,6 +49,11 @@ across arbitrary positive read sizes. The summary includes `received_rows`
 before padding, so a correctly sized output is distinguishable from missing
 image content. This fix does not recover content the device did not send.
 
+`r10` is an experimental comparison build: it omits the `P=OFF` scan-command
+field, matching the analyzed Windows WIA command-builder branch. Geometry,
+decoding, and EOF padding remain as in r9. Whether this changes the missing
+edge content requires a hardware scan; it is not a confirmed fix.
+
 To install the native test build on this Ubuntu x86_64 system:
 
 ```sh
@@ -66,7 +71,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r9.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r10.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
