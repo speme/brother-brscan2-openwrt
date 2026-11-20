@@ -71,7 +71,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r10.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r11.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -144,3 +144,9 @@ components keep their original terms: the replacement libraries are GPL-2.0
 retain Brother's open license and notices (see `files/COPYING.brother` and the
 upstream source headers). The repository LGPL notice does not replace those
 component-specific licenses.
+
+`r10` hardware feedback: received_rows remains 3437, so omitting P=OFF did
+not improve the tested page. `r11` restores that field and tests full A4
+height (up to 297 mm) only for MFC-7420 flatbed regions otherwise clamped
+by the reported raster limit. It logs reported and requested limits. This
+is experimental; the device may still terminate before the requested end.

@@ -1,0 +1,26 @@
+--- a/brscan/backend_src/brother_scanner.c
++++ b/brscan/backend_src/brother_scanner.c
+@@ -2012,9 +2012,23 @@
+ 	//
+ 	// revise the bottom position of the scan-area
+ 	//
++	/* r11 experiment: request the full A4 height for MFC-7420 flatbed.
++	 * Do not exceed A4 or alter other models, ADF, or shorter regions. */
++	if( this->modelInf.productID == 0x0180 &&
++	    this->devScanInfo.wScanSource == MFCSCANSRC_FB &&
++	    lpScanAreaDot->bottom > lMaxScanRaster &&
++	    lpScanAreaDot->bottom <= 2970L * this->devScanInfo.DeviceScan.wResoY / 254L ){
++		fprintf(stderr, "brother2 A4 height test: reported_max=%ld requested_bottom=%ld\n",
++		        (long)lMaxScanRaster, (long)lpScanAreaDot->bottom);
++		lMaxScanRaster = lpScanAreaDot->bottom;
++	}
+ 	if( lpScanAreaDot->bottom > lMaxScanRaster ){
+ 		lpScanAreaDot->bottom = lMaxScanRaster;
+ 	}
++	fprintf(stderr, "brother2 scan area: left=%ld top=%ld right=%ld bottom=%ld max_rows=%ld\n",
++	        (long)lpScanAreaDot->left, (long)lpScanAreaDot->top,
++	        (long)lpScanAreaDot->right, (long)lpScanAreaDot->bottom,
++	        (long)this->devScanInfo.dwMaxScanRaster);
+ 
+ 	//
+ 	// if the normal-scan is selected round on the 16dot unit 

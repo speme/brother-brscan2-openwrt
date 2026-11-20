@@ -1,7 +1,0 @@
---- a/brscan/backend_src/brother_mfccmd.c
-+++ b/brscan/backend_src/brother_mfccmd.c
-@@ -244,1 +244,3 @@
--	strcat( lpszCmdStr, MFCMD_PHOTOMODE_OFF );
-+	/* Experimental: match the Windows WIA command builder, which omits
-+	 * the photo-mode field. Keep geometry and all other fields unchanged. */
-+	/* strcat( lpszCmdStr, MFCMD_PHOTOMODE_OFF ); */
