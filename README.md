@@ -29,6 +29,8 @@ Release `r5` guards short compressed lines and allocation failures. It has
 been checked with synthetic decoder inputs; hardware testing is still needed.
 It also corrects the timestamp argument type and bounds formatted diagnostic
 messages in the Brother backend on 32-bit OpenWrt.
+Release `r6` also bounds scan-command logging and fixes its handling of
+nonprintable bytes.
 
 To install the native test build on this Ubuntu x86_64 system:
 
@@ -47,7 +49,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r5.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r6.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
