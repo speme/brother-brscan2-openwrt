@@ -12,7 +12,7 @@ void* bugchk_malloc(size_t size, const char* filename, int line)
   void *p = malloc(size);
   if (p) return p;
   fprintf(stderr, "bugchk_malloc(size=%zu), can't allocate@%s(%d)\n", size, filename, line);
-  abort();
+  return NULL;
 }
 
 void bugchk_free(void* ptr, const char* filename, int line)

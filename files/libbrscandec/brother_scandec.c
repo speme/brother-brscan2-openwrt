@@ -8,7 +8,7 @@ static HANDLE DAT_00208f00;
 static HANDLE DAT_00208f08;
 static HANDLE DAT_00208f10;
 static byte* DAT_00208f18;
-static long malloc_size;
+static size_t malloc_size;
 void* bugchk;
 void* DAT_00208ef0;
 
@@ -18,6 +18,8 @@ byte* (*DAT_00208f20)(SCANDEC_WRITE *param_1,size_t *param_2);
 
 BOOL ScanDecOpen(SCANDEC_OPEN *param_1)
 {
+  if (!param_1 || !param_1->dwInLinePixCnt)
+    return 0;
   /*
    * Compute buffer size from dwInLinePixCnt and color type.
    * Verified against disassembly: reads offset 0x18 (dwInLinePixCnt),
@@ -33,7 +35,9 @@ BOOL ScanDecOpen(SCANDEC_OPEN *param_1)
   }
   else {
     /* 3 bytes per pixel (RGB) */
-    malloc_size = param_1->dwInLinePixCnt * 3;
+    if (param_1->dwInLinePixCnt > SIZE_MAX / 3)
+      return 0;
+    malloc_size = (size_t)param_1->dwInLinePixCnt * 3;
   }
 
   bugchk = bugchk_malloc(malloc_size, __FILE__, __LINE__);
@@ -212,6 +216,8 @@ byte * FUN_001063f3(SCANDEC_WRITE *param_1,size_t *param_2)
       local_30 = DAT_00208ef0;
       local_28 = DAT_00208ef0;
       local_48 = malloc_size;
+      if (local_40 < 2)
+        return local_28;
       if (DAT_00208f08 == 0) {
         do {
           if (local_48 == 0) {
@@ -361,6 +367,8 @@ undefined * FUN_00106751(SCANDEC_WRITE *param_1,size_t *param_2)
       local_38 = DAT_00208ef0;
       local_30 = DAT_00208ef0;
       local_50 = malloc_size;
+      if (local_48 < 2)
+        return local_30;
       if (DAT_00208f08 == 0) {
         do {
           if (local_50 == 0) {

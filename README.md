@@ -25,6 +25,10 @@ assembles separate R, G, and B scan lines into interleaved RGB rows and swaps
 BGR input when needed. A full-page MFC-7420 color scan confirmed that the
 three-band output is fixed. Release `r4` adds Brother's MFC-7420 color LUT at
 `GrayCmData/ALL/brmsl08f.cm`; the `.cm` file retains Brother's license.
+Release `r5` guards short compressed lines and allocation failures. It has
+been checked with synthetic decoder inputs; hardware testing is still needed.
+It also corrects the timestamp argument type and bounds formatted diagnostic
+messages in the Brother backend on 32-bit OpenWrt.
 
 To install the native test build on this Ubuntu x86_64 system:
 
@@ -43,7 +47,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r4.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r5.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -71,9 +75,10 @@ scanimage --format=pnm > /tmp/mfc7420-test.pnm
 ls -lh /tmp/mfc7420-test.pnm
 ```
 
-If detection fails, collect `lsusb`, `scanimage -L`, and
-`SANE_DEBUG_BROTHER2=128 scanimage -L` output. Do not expect color or scaled
-resolution modes to work correctly until tested on the device.
+If detection fails, collect `lsusb` and `scanimage -L` output. Debug logging
+has caused `scanimage` to segfault on the tested OpenWrt router and its cause
+has not yet been established. Scaling is not implemented by this decoder;
+scan resolutions other than those tested may produce incorrect results.
 
 ## Build
 
@@ -84,6 +89,12 @@ make package/libs/libusb-compat/compile V=s
 make package/utils/sane-backends/compile V=s
 make package/feeds/custom/brother-brscan2/compile V=s
 ```
+
+`tests/decoder-short-input.c` exercises short PackBits input and a normal
+decoded line. Compile it with the decoder sources and Brother's
+`backend_src/brother_dtype.h` from the source archive, keeping the expected
+`libbrscandec2` and `libsane-brother` directory layout. Running with AddressSanitizer
+and UndefinedBehaviorSanitizer is recommended on a development machine.
 
 ## Licensing
 

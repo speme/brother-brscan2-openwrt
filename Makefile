@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=brother-brscan2
 PKG_VERSION:=0.2.5
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 PKG_SOURCE:=brscan2-src-$(PKG_VERSION)-1.tar.gz
 PKG_SOURCE_SUBDIR:=brscan2-src-$(PKG_VERSION)-1/brscan
@@ -38,6 +38,7 @@ define Build/Prepare
 	ln -sfn backend_brscan2 $(BRSCAN_DIR)/backend_brscan
 	ln -sfn backend_src $(BRSCAN_DIR)/libsane-brother
 	$(SED) 's,/usr/local/Brother/sane/,/usr/share/sane/brother/,g' $(BRSCAN_DIR)/backend_src/brother.h $(BRSCAN_DIR)/backend_src/brother_advini.h $(BRSCAN_DIR)/backend_src/brother_log.c
+	$(SED) 's/(ltime%1000)/(long)(ltime%1000)/; s/vsprintf(/vsnprintf(/; s/(LPSTR)szStrBuff,/(LPSTR)szStrBuff, sizeof(szStrBuff),/; s/sprintf(szStrBuff,/snprintf(szStrBuff, sizeof(szStrBuff),/; s/fwrite( szStrBuff, sizeof(char), dwStrLen,/fwrite( szStrBuff, sizeof(char), strlen(szStrBuff),/; s/char   szStrBuff\[ LOGSTRMAXLEN \];/char   szStrBuff[ LOGSTRMAXLEN ] = {0};/' $(BRSCAN_DIR)/backend_src/brother_log.c
 	$(SED) '/#include <curses.h>/d' $(BRSCAN_DIR)/backend_src/brother_advini.c
 	$(SED) '/#include <stdlib.h>/a\\#include <stdint.h>' $(BRSCAN_DIR)/backend_src/brother_bugchk.c
 	$(SED) 's/if (ptr == NULL || (unsigned int)ptr < 100UL)/if (ptr == NULL) return; if ((uintptr_t)ptr < 100UL)/' $(BRSCAN_DIR)/backend_src/brother_bugchk.c
