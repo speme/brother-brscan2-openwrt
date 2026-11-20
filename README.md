@@ -31,6 +31,12 @@ It also corrects the timestamp argument type and bounds formatted diagnostic
 messages in the Brother backend on 32-bit OpenWrt.
 Release `r6` also bounds scan-command logging and fixes its handling of
 nonprintable bytes.
+Release `r7` fixes output accounting for complete white rows returned by the
+scanner. The old packet handler advanced the destination pointer without
+adding the row to the output byte count, which could drop rows and truncate
+page content. A synthetic packet regression fails on the upstream handler
+and passes on the patched handler with sanitizers. Hardware confirmation is
+still required after installing this release.
 
 To install the native test build on this Ubuntu x86_64 system:
 
@@ -49,7 +55,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r6.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r7.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -97,6 +103,12 @@ decoded line. Compile it with the decoder sources and Brother's
 `backend_src/brother_dtype.h` from the source archive, keeping the expected
 `libbrscandec2` and `libsane-brother` directory layout. Running with AddressSanitizer
 and UndefinedBehaviorSanitizer is recommended on a development machine.
+
+To test the white-row fix against the prepared upstream source:
+
+```sh
+python3 tests/white-line-accounting.py path/to/brscan/backend_src/brother_scanner.c
+```
 
 ## Licensing
 

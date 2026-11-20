@@ -1,0 +1,12 @@
+--- a/brscan/backend_src/brother_scanner.c
++++ b/brscan/backend_src/brother_scanner.c
+@@ -2102,6 +2102,9 @@
+ 
+ 				if( lpFwBuf ){
+ 					lRealY++;
++					memset(lpFwBuf, this->devScanInfo.wColorType < COLOR_TG ? 0x00 : 0xFF,
++					       this->scanInfo.ScanAreaByte.lWidth);
++					*lpFwBufcnt += this->scanInfo.ScanAreaByte.lWidth;
+ 					lpFwBuf += this->scanInfo.ScanAreaByte.lWidth;
+ 				}
+ 			}else{
