@@ -10,14 +10,14 @@
  #include "sane/sane.h"
  
  #include "brother_dtype.h"
-@@ -1823,6 +1827,69 @@ GetScanAreaParam( Brother_Scanner *this )
+@@ -1823,6 +1827,73 @@ GetScanAreaParam( Brother_Scanner *this )
  	this->scanInfo.ScanAreaMm = this->uiSetting.ScanAreaMm;
 +	/*
 +	 * Port the MFC-7420 values and coordinate mapping from its Windows TWAIN
 +	 * model file. Values are thousandths of an inch. For the flatbed, the
 +	 * Windows calculation keeps the calibrated start at zero and trims the
-+	 * far edge by ScanOrigin + Margin. Apply in 0.1 mm units before converting
-+	 * to dots so SANE frame dimensions and USB A= coordinates stay consistent.
++	 * far edge by ScanOrigin + Margin. Apply before pixel conversion so SANE
++	 * frame dimensions and USB A= coordinates use the same calibrated area.
 +	 */
 +	if (this->modelInf.productID == 0x0180 &&
 +	    this->devScanInfo.wScanSource == MFCSCANSRC_FB &&
@@ -47,31 +47,35 @@
 +			}
 +			fclose(geometry);
 +		}
-+		/* 1 thou = 0.254 units of 0.1 mm; round to the nearest unit. */
-+		max_width = (max_scan_width * 254L + 500L) / 1000L;
-+		max_height = (max_scan_height * 254L + 500L) / 1000L;
++		/* 1 thou = 0.254 units of 0.1 mm; cap maxima inward. */
++		max_width = (max_scan_width * 254L) / 1000L;
++		max_height = (max_scan_height * 254L) / 1000L;
 +		if (this->scanInfo.ScanAreaMm.right > max_width)
 +			this->scanInfo.ScanAreaMm.right = max_width;
 +		if (this->scanInfo.ScanAreaMm.bottom > max_height)
 +			this->scanInfo.ScanAreaMm.bottom = max_height;
-+		right_offset = ((scan_origin_x + left_margin) * 254L + 500L) / 1000L;
-+		bottom_offset = ((scan_origin_y + top_margin) * 254L + 500L) / 1000L;
++		/* Keep sub-0.1 mm precision and round corrected far edges outward. */
++		right_offset = (scan_origin_x + left_margin) * 254L;
++		bottom_offset = (scan_origin_y + top_margin) * 254L;
 +		left_offset = left_margin > scan_origin_x ?
-+			((left_margin - scan_origin_x) * 254L + 500L) / 1000L : 0;
++			((left_margin - scan_origin_x) * 254L + 999L) / 1000L : 0;
 +		top_offset = top_margin > scan_origin_y ?
-+			((top_margin - scan_origin_y) * 254L + 500L) / 1000L : 0;
++			((top_margin - scan_origin_y) * 254L + 999L) / 1000L : 0;
 +		this->scanInfo.ScanAreaMm.left += left_offset;
 +		this->scanInfo.ScanAreaMm.top += top_offset;
-+		if (this->scanInfo.ScanAreaMm.right > right_offset)
-+			this->scanInfo.ScanAreaMm.right -= right_offset;
++		if (this->scanInfo.ScanAreaMm.right * 1000L > right_offset)
++			this->scanInfo.ScanAreaMm.right =
++				(this->scanInfo.ScanAreaMm.right * 1000L - right_offset + 999L) / 1000L;
 +		else
 +			this->scanInfo.ScanAreaMm.right = this->scanInfo.ScanAreaMm.left;
-+		if (this->scanInfo.ScanAreaMm.bottom > bottom_offset)
-+			this->scanInfo.ScanAreaMm.bottom -= bottom_offset;
++		if (this->scanInfo.ScanAreaMm.bottom * 1000L > bottom_offset)
++			this->scanInfo.ScanAreaMm.bottom =
++				(this->scanInfo.ScanAreaMm.bottom * 1000L - bottom_offset + 999L) / 1000L;
 +		else
 +			this->scanInfo.ScanAreaMm.bottom = this->scanInfo.ScanAreaMm.top;
-+		fprintf(stderr, "brother2 MFC-7420 TWAIN geometry: cap=%ld,%ld offsets=%ld,%ld area=%ld,%ld,%ld,%ld\n",
-+		        (long)max_width, (long)max_height, (long)right_offset, (long)bottom_offset,
++		fprintf(stderr, "brother2 MFC-7420 TWAIN geometry: cap=%ld,%ld origin_margin=%ld,%ld area=%ld,%ld,%ld,%ld\n",
++		        (long)max_width, (long)max_height,
++		        (long)(scan_origin_x + left_margin), (long)(scan_origin_y + top_margin),
 +		        (long)this->scanInfo.ScanAreaMm.left, (long)this->scanInfo.ScanAreaMm.top,
 +		        (long)this->scanInfo.ScanAreaMm.right, (long)this->scanInfo.ScanAreaMm.bottom);
 +	}

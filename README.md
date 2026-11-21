@@ -71,7 +71,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r14.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r15.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -169,11 +169,13 @@ all-white buffers, partial headers, mixed image/white packets, zero-output
 decode calls and status tracking. Neither bug is yet established as the
 cause of the measured 69-row deficit.
 
-`r14` replaces the r13 output-pixel shift with the MFC-7420 geometry from
+`r15` replaces the r13 output-pixel shift with the MFC-7420 geometry from
 the supplied Windows TWAIN model file. For flatbed full-frame scans, it
 applies `ScanOriginX=77`, `ScanOriginY=118`, `LeftMargin=0`, and
 `TopMargin=118` (thousandths of an inch) to the requested scan rectangle
-before converting it to dots. The resulting start remains `(0,0)`; the
+before converting it to dots. It retains sub-0.1 mm precision and rounds
+corrected far edges outward, avoiding an extra 16-dot loss at 300 dpi. The
+resulting start remains `(0,0)`; the
 calibrated bounds shrink by 1.96 mm on the right and 5.99 mm at the bottom.
 At 300 dpi, an A4 frame is expected to become approximately 2464 x 3437
 pixels after the backend's 16-dot horizontal alignment. This should match
