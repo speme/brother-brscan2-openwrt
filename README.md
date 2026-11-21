@@ -174,8 +174,8 @@ cause of the measured 69-row deficit.
 This is wider than Windows `MaxScanWidth=8347`. In this exploratory mode it also
 raises the backend's queried horizontal pixel cap to the corresponding model
 limit, implementing the effect of Windows `ScanCmdAdjustWidth=2` for a zero
-left edge. It rounds the width outward to the next 0.1 mm SANE unit. The scanner may still
-clamp the request; the logs now include
+left edge. The r20 hardware scan accepted a 2544-column request and returned
+2544-byte rows. It rounds the width outward to the next 0.1 mm SANE unit. The logs include
 `max_pixels` to show the cap passed to the device-area calculation. Set
 `ExpandFullFrame=0` in `/etc/sane.d/brother2-geometry.conf` to restore the
 Windows origin/margin crop and queried device cap. The scan origin remains 0,

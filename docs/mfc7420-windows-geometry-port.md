@@ -30,11 +30,11 @@ scans are untouched.
 
 With full-range mode enabled, the nominal request is about 215.9 x 350.0 mm.
 At 300 dpi that is roughly 2550 x 4134 pixels before 16-dot alignment and
-vertical raster clamping. Earlier scans showed the queried width cap at 2480
-pixels and `max_rows=4086`; r20 probes a 2544-dot aligned width and logs the
-effective width cap. This is experimental: compare `scan area`, USB `A=` and
-`row_bytes` to determine whether the scanner supplies the extra columns. The
-full-range scan may include blank area beyond A4.
+vertical raster clamping. The r20 hardware scan accepted
+`A=0,0,2544,4086`, reported `row_bytes=2544`, `max_pixels=2550`, and returned
+3437 raster rows. This confirms the wider horizontal request produces data;
+the remaining 649 rows are padding. The aligned width is about 215.4 mm, close
+to the 215.9 mm glass width. The output includes blank area beyond A4.
 
 ## Why this changes the scan origin handling
 
