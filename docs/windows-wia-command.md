@@ -13,7 +13,8 @@ DLL SHA-256 is
 `43a4bd4bf186a77f6a2328589085e0ef1c17870e3e0d691f1b1729a3f08231ff`.
 The probe rejects other builds. It replaces logging, registry lookup
 (duplex unavailable), stack-cookie checking, and `lstrlenA`; the original
-command-building, string-copying and numeric-formatting code executes.
+parameter setters, command-building, string-copying and numeric-formatting
+code execute.
 It performs no USB access.
 
 With synthetic 300 dpi gray, uncompressed, neutral brightness/contrast,
@@ -27,7 +28,7 @@ C=NONE
 B=50
 N=50
 U=OFF
-A=0,2480,0,3506
+A=0,0,2480,3506
 
 0x80
 ```
@@ -35,14 +36,22 @@ A=0,2480,0,3506
 The builder emits no `P=OFF` field, whereas the Linux backend includes
 that field. This is a confirmed command difference for the tested branch,
 but it does not establish that photo mode causes the missing rows.
-The rectangle is supplied directly to the builder; it is not a recovered
-Windows application's final rectangle.
+The rectangle is supplied through the original `BrMfcSetScanArea` routine
+at `0x1c3141f1`, which calls `DeviceSetParam` at `0x1c31537f`. It is not a
+recovered Windows application's final rectangle. The earlier probe supplied
+object fields directly and incorrectly treated their order as RECT order.
+They are actually left, right, top, bottom; the builder emits left, top,
+right, bottom. The corrected probe verifies both NONE and RLENGTH branches
+through the original setters and matches Linux's coordinate order.
+
+Compression is an explicit synthetic input here. A generated NONE command
+does not establish that Windows normally selects uncompressed scanning.
 
 Run with the original unpacked Windows DLL:
 
 ```sh
-/tmp/brother-reverse-venv/bin/python tools/probe_windows_wia_command.py \
-  /tmp/brother-win-reverse/x86/brwia09a.dll
+build_dir/reverse-env/bin/python tools/probe_windows_wia_command.py \
+  build_dir/windows/brwia09a.dll
 ```
 
 ## Independent WIA geometry path

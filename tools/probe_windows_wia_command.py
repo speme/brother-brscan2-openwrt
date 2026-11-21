@@ -54,21 +54,38 @@ def hook(uc, address, size, user_data):
 
 cpu.hook_add(UC_HOOK_CODE, hook)
 obj, output, stack = 0x20000000, 0x20004000, 0x40008000
-fields = {0x11dc: 300, 0x11e0: 300, 0x11e4: 0x208,
-          0x11e8: 0, 0x11ec: 0, 0x11f0: 0,
-          0x11f4: 0, 0x11f8: 0, 0x11fc: 2480, 0x1200: 3506}
-for offset, value in fields.items():
-    cpu.mem_write(obj + offset, pack(value))
-cpu.mem_write(stack, pack(0x30000010, output, 4096))
-cpu.reg_write(UC_X86_REG_ECX, obj)
-cpu.reg_write(UC_X86_REG_ESP, stack)
-cpu.emu_start(0x1c3168de, 0, count=100000)
-if cpu.reg_read(UC_X86_REG_ESP) != stack + 12:
-    raise RuntimeError("Command builder did not return normally")
-command = string(output)
-assert command.startswith(b"\x1bX\nR=300,300\n")
-assert command.endswith(b"\x80")
-assert b"P=OFF" not in command
-assert b"A=0,2480,0,3506\n" in command
-print(json.dumps({"dll_sha256": expected, "synthetic_parameters": fields,
-                  "command": command.decode("latin1")}, indent=2))
+def call(address, parameters):
+    cpu.mem_write(stack, pack(0x30000010, *parameters))
+    cpu.reg_write(UC_X86_REG_ECX, obj)
+    cpu.reg_write(UC_X86_REG_ESP, stack)
+    cpu.emu_start(address, 0, count=100000)
+    if cpu.reg_read(UC_X86_REG_ESP) != stack + 4 * (len(parameters) + 1):
+        raise RuntimeError("Original routine did not return normally")
+
+
+def parameter(kind, *values):
+    block = 0x20006000
+    cpu.mem_write(block, pack(kind, *values))
+    call(0x1c31537f, [block])
+
+
+parameter(1, 300, 300)  # Resolution
+parameter(2, 0x208)  # Gray64
+# BrMfcSetScanArea takes x, y, width, height, then calls DeviceSetParam.
+# Its internal fields are left, right, top, bottom (not RECT order).
+call(0x1c3141f1, [0, 0, 2480, 3506])
+commands = {}
+for name, compression in [("none", 0), ("rlength", 3)]:
+    parameter(3, compression)
+    cpu.mem_write(output, b"\0" * 4096)
+    call(0x1c3168de, [output, 4096])
+    command = string(output)
+    assert command.startswith(b"\x1bX\nR=300,300\n")
+    assert command.endswith(b"\x80")
+    assert b"P=OFF" not in command
+    assert b"A=0,0,2480,3506\n" in command
+    assert (b"C=NONE\n" if compression == 0 else b"C=RLENGTH\n") in command
+    commands[name] = command.decode("latin1")
+print(json.dumps({"dll_sha256": expected,
+                  "synthetic_rectangle_xywh": [0, 0, 2480, 3506],
+                  "commands": commands}, indent=2))
