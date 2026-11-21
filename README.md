@@ -71,7 +71,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r19.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r20.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -169,17 +169,18 @@ all-white buffers, partial headers, mixed image/white packets, zero-output
 decode calls and status tracking. Neither bug is yet established as the
 cause of the measured 69-row deficit.
 
-`r19` expands MFC-7420 flatbed requests whose top-left is `(0,0)` to the
-Windows model maximum, 212.0 x 350.0 mm. In this exploratory mode it also
+`r20` expands MFC-7420 flatbed requests whose top-left is `(0,0)` to the
+215.9 mm flatbed width (Windows `MaxDocWidth=8500`) and 350.0 mm model height.
+This is wider than Windows `MaxScanWidth=8347`. In this exploratory mode it also
 raises the backend's queried horizontal pixel cap to the corresponding model
 limit, implementing the effect of Windows `ScanCmdAdjustWidth=2` for a zero
-left edge. It rounds the 212.0138 mm Windows width outward to 212.1 mm so
-0.1 mm quantization does not round below that limit. The scanner may still
+left edge. It rounds the width outward to the next 0.1 mm SANE unit. The scanner may still
 clamp the request; the logs now include
 `max_pixels` to show the cap passed to the device-area calculation. Set
 `ExpandFullFrame=0` in `/etc/sane.d/brother2-geometry.conf` to restore the
-Windows origin/margin crop and queried device cap. Other scanners and requests
-with a nonzero top-left are unchanged.
+Windows origin/margin crop and queried device cap. The scan origin remains 0,
+so this extends the right edge only. Other scanners and requests with a
+nonzero top-left are unchanged.
 
 The settings are in `/etc/sane.d/brother2-geometry.conf`, registered as a
 package conffile. Set `ExpandFullFrame=0` to apply the Windows origin/margin

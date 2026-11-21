@@ -10,7 +10,7 @@
  #include "sane/sane.h"
  
  #include "brother_dtype.h"
-@@ -1823,4 +1827,87 @@ GetScanAreaParam( Brother_Scanner *this )
+@@ -1823,4 +1827,90 @@ GetScanAreaParam( Brother_Scanner *this )
  	this->scanInfo.ScanAreaMm = this->uiSetting.ScanAreaMm;
 +	/*
 +	 * Port the MFC-7420 values and coordinate mapping from its Windows TWAIN
@@ -26,8 +26,9 @@
 +		LONG left_margin = 0, top_margin = 118;
 +		LONG max_scan_width = 8347, max_scan_height = 13780;
 +		LONG right_offset, bottom_offset, left_offset, top_offset;
-+		LONG max_width, max_height;
++		LONG max_width, max_height, full_width;
 +		LONG expand_full_frame = 1;
++		LONG full_frame_width = 8500;
 +		FILE *geometry = fopen("/etc/sane.d/brother2-geometry.conf", "r");
 +		char line[128];
 +		if (geometry) {
@@ -46,24 +47,26 @@
 +				else if (!strcmp(line, "MaxScanWidth")) max_scan_width = value;
 +				else if (!strcmp(line, "MaxScanHeight")) max_scan_height = value;
 +				else if (!strcmp(line, "ExpandFullFrame")) expand_full_frame = value ? 1 : 0;
++				else if (!strcmp(line, "FullFrameWidth")) full_frame_width = value;
 +			}
 +			fclose(geometry);
 +		}
 +		/* 1 thou = 0.254 units of 0.1 mm; keep model caps outward. */
 +		max_width = (max_scan_width * 254L + 999L) / 1000L;
 +		max_height = (max_scan_height * 254L) / 1000L;
++		full_width = (full_frame_width * 254L + 999L) / 1000L;
 +		if (this->scanInfo.ScanAreaMm.right > max_width)
 +			this->scanInfo.ScanAreaMm.right = max_width;
 +		if (this->scanInfo.ScanAreaMm.bottom > max_height)
 +			this->scanInfo.ScanAreaMm.bottom = max_height;
 +		/* Full-frame mode requests the model maximum; calibration mode is optional. */
 +		if (expand_full_frame) {
-+			this->scanInfo.ScanAreaMm.right = max_width;
++			this->scanInfo.ScanAreaMm.right = full_width;
 +			this->scanInfo.ScanAreaMm.bottom = max_height;
 +			/* Probe Windows' ScanCmdAdjustWidth=2 limit beyond the queried cap. */
 +			{
 +				LONG model_max_pixels =
-+					(max_width * this->devScanInfo.DeviceScan.wResoX + 253L) / 254L;
++					(full_width * this->devScanInfo.DeviceScan.wResoX + 253L) / 254L;
 +				if (model_max_pixels > this->devScanInfo.dwMaxScanPixels)
 +					this->devScanInfo.dwMaxScanPixels = model_max_pixels;
 +			}
@@ -90,7 +93,7 @@
 +		}
 +		fprintf(stderr, "brother2 MFC-7420 TWAIN geometry: expand=%ld cap=%ld,%ld origin_margin=%ld,%ld area=%ld,%ld,%ld,%ld\n",
 +		        (long)expand_full_frame,
-+		        (long)max_width, (long)max_height,
++		        (long)(expand_full_frame ? full_width : max_width), (long)max_height,
 +		        (long)(scan_origin_x + left_margin), (long)(scan_origin_y + top_margin),
 +		        (long)this->scanInfo.ScanAreaMm.left, (long)this->scanInfo.ScanAreaMm.top,
 +		        (long)this->scanInfo.ScanAreaMm.right, (long)this->scanInfo.ScanAreaMm.bottom);

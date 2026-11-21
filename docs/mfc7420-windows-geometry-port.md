@@ -17,21 +17,21 @@ The TWAIN DLL's geometry routines subtract `ScanOriginX + LeftMargin` from the d
 
 The Linux backend retains the Windows crop values, but full-frame requests
 whose top-left is `(0,0)` default to an expanded exploratory range:
-`ExpandFullFrame=1` requests the model maximum, 212.0 x 350.0 mm. r19 also
-raises the backend's queried horizontal pixel cap to the Windows model width,
-rounding 212.0138 mm outward to 212.1 mm to preserve it through SANE's 0.1 mm
-quantization. This tests the effect of `ScanCmdAdjustWidth=2` for a zero left
-edge. The scanner
+`ExpandFullFrame=1` requests the physical flatbed glass width of 215.9 mm
+(`MaxDocWidth=8500`) and the 350.0 mm model height. This exceeds Windows
+`MaxScanWidth=8347` (about 212.0 mm). r20 also raises the backend's queried
+horizontal pixel cap and rounds width outward through SANE's 0.1 mm units,
+testing the effect of `ScanCmdAdjustWidth=2` for a zero left edge. The scanner
 may still reject or clamp this wider request. Set `ExpandFullFrame=0` in
 `/etc/sane.d/brother2-geometry.conf` to apply the Windows origin/margin crop
 and retain the queried width cap. This applies only to USB product
 `04f9:0180`, flatbed source, and a zero left/top request; other models and ADF
 scans are untouched.
 
-With full-range mode enabled, the nominal request is about 212.0 x 350.0 mm.
-At 300 dpi that is roughly 2504 x 4134 pixels before 16-dot alignment and
+With full-range mode enabled, the nominal request is about 215.9 x 350.0 mm.
+At 300 dpi that is roughly 2550 x 4134 pixels before 16-dot alignment and
 vertical raster clamping. Earlier scans showed the queried width cap at 2480
-pixels and `max_rows=4086`; r19 probes a 2512-dot aligned width and logs the
+pixels and `max_rows=4086`; r20 probes a 2544-dot aligned width and logs the
 effective width cap. This is experimental: compare `scan area`, USB `A=` and
 `row_bytes` to determine whether the scanner supplies the extra columns. The
 full-range scan may include blank area beyond A4.
