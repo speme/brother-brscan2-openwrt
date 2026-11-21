@@ -1,0 +1,59 @@
+--- a/brscan/backend_src/brother_log.c
++++ b/brscan/backend_src/brother_log.c
+@@ -109,6 +109,8 @@
+ 			//
+ 
+ 		hLogFile = fopen(szLogFile,"w");
++			if (hLogFile != NULL)
++				nNewLog = 0;
+ 		}
+     }
+ 
+--- a/brscan/backend_src/brother2.c
++++ b/brscan/backend_src/brother2.c
+@@ -726,6 +726,7 @@
+   rc= OpenDevice(this->hScanner, pdev->modelInf.seriesNo);
+   if (!rc)
+       return SANE_STATUS_INVAL;
++  WriteLog("sane_open stage: OpenDevice complete");
+ 
+   // 各種情報の初期化
+   this->scanState.bEOF = FALSE;
+@@ -764,8 +765,10 @@
+ 
+   GetDeviceAccessParam( this );
+ 
++  WriteLog("sane_open stage: QueryDeviceInfo begin");
+   if (!QueryDeviceInfo(this)) // Qコマンドを発行して、デバイス情報を取得
+       return SANE_STATUS_INVAL;
++  WriteLog("sane_open stage: QueryDeviceInfo complete");
+ 
+ #ifndef  NET_AND_ADVINI //for network and inifile extension (M-LNX16,17) kado
+ #ifndef DEBUG_No39
+@@ -808,6 +811,7 @@
+   //
+   // Scan Decode DLLのロード
+   //
++  WriteLog("sane_open stage: LoadScanDecDll begin");
+   rc = LoadScanDecDll( this );
+   if ( !rc )  // Scan Decode DLLのロード失敗
+       return SANE_STATUS_INVAL;
+@@ -815,7 +819,9 @@
+   // GrayTableのロード
+   LoadGrayTable( this, GRAY_TABLE_NO );
+ 
++  WriteLog("sane_open stage: InitOptions begin");
+   rc = InitOptions(this);
++  WriteLog("sane_open stage: InitOptions status=%d", rc);
+   WriteLog( "<<< sane_open end >>> " );
+   return rc;
+ }
+@@ -903,7 +909,7 @@
+   Brother_Scanner *this=(Brother_Scanner*)handle;
+   WriteLog( "<<< sane_get_option_descriptor start >>> " );
+ 
+-  if (iOpt<NUM_OPTIONS)
++  if (this && iOpt >= 0 && iOpt < NUM_OPTIONS)
+     return this->aoptDesc+iOpt;
+ 
+   WriteLog( "<<< sane_get_option_descriptor end >>> " );

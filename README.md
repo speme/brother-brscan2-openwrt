@@ -123,9 +123,12 @@ enumeration; hardware verification is still required.
 
 Release r30 corrects SANE option 0 (`num-options`): it now advertises the
 required integer type and unit, and rejects invalid indices or null value
-pointers before dereferencing them. This targets the remote saned crash while
-the Ubuntu client reads option 0. The router-local scan works on r29; remote
-verification of r30 is still pending.
+pointers before dereferencing them. Router logs show a remote open still
+crashes saned in musl malloc after the backend's `OpenDevice` recovery phase.
+Release r31 makes the Brother log append during one open and records stages of
+`sane_open`, and adds null/negative-index checks to
+`sane_get_option_descriptor`. These diagnostics are intended to identify the
+next failing stage; they do not yet claim to fix remote scanning.
 
 ## Build
 
