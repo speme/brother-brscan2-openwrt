@@ -10,7 +10,7 @@
  #include "sane/sane.h"
  
  #include "brother_dtype.h"
-@@ -1823,6 +1827,73 @@ GetScanAreaParam( Brother_Scanner *this )
+@@ -1823,6 +1827,82 @@ GetScanAreaParam( Brother_Scanner *this )
  	this->scanInfo.ScanAreaMm = this->uiSetting.ScanAreaMm;
 +	/*
 +	 * Port the MFC-7420 values and coordinate mapping from its Windows TWAIN
@@ -27,6 +27,7 @@
 +		LONG max_scan_width = 8347, max_scan_height = 13780;
 +		LONG right_offset, bottom_offset, left_offset, top_offset;
 +		LONG max_width, max_height;
++		LONG expand_full_frame = 1;
 +		FILE *geometry = fopen("/etc/sane.d/brother2-geometry.conf", "r");
 +		char line[128];
 +		if (geometry) {
@@ -44,6 +45,7 @@
 +				else if (!strcmp(line, "TopMargin")) top_margin = value;
 +				else if (!strcmp(line, "MaxScanWidth")) max_scan_width = value;
 +				else if (!strcmp(line, "MaxScanHeight")) max_scan_height = value;
++				else if (!strcmp(line, "ExpandFullFrame")) expand_full_frame = value ? 1 : 0;
 +			}
 +			fclose(geometry);
 +		}
@@ -54,6 +56,11 @@
 +			this->scanInfo.ScanAreaMm.right = max_width;
 +		if (this->scanInfo.ScanAreaMm.bottom > max_height)
 +			this->scanInfo.ScanAreaMm.bottom = max_height;
++		/* Full-frame mode requests the model maximum; calibration mode is optional. */
++		if (expand_full_frame) {
++			this->scanInfo.ScanAreaMm.right = max_width;
++			this->scanInfo.ScanAreaMm.bottom = max_height;
++		} else {
 +		/* Keep sub-0.1 mm precision and round corrected far edges outward. */
 +		right_offset = (scan_origin_x + left_margin) * 254L;
 +		bottom_offset = (scan_origin_y + top_margin) * 254L;
@@ -73,7 +80,9 @@
 +				(this->scanInfo.ScanAreaMm.bottom * 1000L - bottom_offset + 999L) / 1000L;
 +		else
 +			this->scanInfo.ScanAreaMm.bottom = this->scanInfo.ScanAreaMm.top;
-+		fprintf(stderr, "brother2 MFC-7420 TWAIN geometry: cap=%ld,%ld origin_margin=%ld,%ld area=%ld,%ld,%ld,%ld\n",
++		}
++		fprintf(stderr, "brother2 MFC-7420 TWAIN geometry: expand=%ld cap=%ld,%ld origin_margin=%ld,%ld area=%ld,%ld,%ld,%ld\n",
++		        (long)expand_full_frame,
 +		        (long)max_width, (long)max_height,
 +		        (long)(scan_origin_x + left_margin), (long)(scan_origin_y + top_margin),
 +		        (long)this->scanInfo.ScanAreaMm.left, (long)this->scanInfo.ScanAreaMm.top,

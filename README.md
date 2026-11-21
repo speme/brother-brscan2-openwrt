@@ -71,7 +71,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r15.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r16.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -169,25 +169,18 @@ all-white buffers, partial headers, mixed image/white packets, zero-output
 decode calls and status tracking. Neither bug is yet established as the
 cause of the measured 69-row deficit.
 
-`r15` replaces the r13 output-pixel shift with the MFC-7420 geometry from
-the supplied Windows TWAIN model file. For flatbed full-frame scans, it
-applies `ScanOriginX=77`, `ScanOriginY=118`, `LeftMargin=0`, and
-`TopMargin=118` (thousandths of an inch) to the requested scan rectangle
-before converting it to dots. It retains sub-0.1 mm precision and rounds
-corrected far edges outward, avoiding an extra 16-dot loss at 300 dpi. The
-resulting start remains `(0,0)`; the
-calibrated bounds shrink by 1.96 mm on the right and 5.99 mm at the bottom.
-At 300 dpi, an A4 frame is expected to become approximately 2464 x 3437
-pixels after the backend's 16-dot horizontal alignment. This should match
-the 3437 image rows already received from the device and stop padding those
-rows to an uncalibrated 3506-row frame. It cannot recover samples outside
-the device's active optical range.
+`r16` expands MFC-7420 flatbed requests whose top-left is `(0,0)` to the
+Windows model maximum, 212.0 x 350.0 mm, further limited by live scanner
+raster limits. This exploratory full-range mode lets a scan measure the
+active area instead of trimming the requested A4 frame by the Windows
+origin/margin values. Set `ExpandFullFrame=0` in
+`/etc/sane.d/brother2-geometry.conf` to restore that crop. It retains a
+`(0,0)` start and changes only the far edge; it does not shift decoded
+pixels. Other scanners and requests with a nonzero top-left are unchanged.
 
 The settings are in `/etc/sane.d/brother2-geometry.conf`, registered as a
-package conffile. Edit the values there to adjust the model geometry; set the
-two origins and two margins to zero to disable the geometry correction. The
-maximum-dimension caps remain active. The settings apply only to
-MFC-7420 flatbed scans whose requested top-left is `(0,0)`. The log reports
-`brother2 MFC-7420 TWAIN geometry`. See
+package conffile. Set `ExpandFullFrame=0` to apply the Windows origin/margin
+crop. The settings apply only to MFC-7420 flatbed scans whose requested
+top-left is `(0,0)`. The log reports `brother2 MFC-7420 TWAIN geometry`. See
 [`docs/mfc7420-windows-geometry-port.md`](docs/mfc7420-windows-geometry-port.md)
 for the reverse-engineering evidence and remaining hardware limits.

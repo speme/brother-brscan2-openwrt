@@ -15,12 +15,23 @@ MaxScanHeight=13780
 
 The TWAIN DLL's geometry routines subtract `ScanOriginX + LeftMargin` from the document's right edge and `ScanOriginY + TopMargin` from its bottom edge. If a margin exceeds the corresponding origin, the near edge begins at `Margin - Origin`. For the MFC-7420 defaults the near edge stays at `(0,0)` and the far edge is reduced by 77 and 236 thousandths of an inch. At 300 dpi that is about 23 horizontal dots and 71 vertical dots.
 
-The Linux backend applies the same values to the MFC-7420 flatbed's full-frame SANE rectangle before converting 0.1 mm coordinates to dots. It retains sub-0.1 mm
-precision through the correction and rounds the resulting far edges outward,
-so 16-dot horizontal alignment does not unexpectedly drop a full 16-dot
-step. The values live in `/etc/sane.d/brother2-geometry.conf`; missing entries fall back to the Windows values. Set the two origins and two margins to zero to disable the geometry correction; maximum-dimension caps remain active. The rule is gated to USB product `04f9:0180`, flatbed source, and a zero left/top request; other models, ADF scans and cropped regions are left untouched.
+The Linux backend retains the Windows crop values, but full-frame requests
+whose top-left is `(0,0)` now default to an expanded exploratory range:
+`ExpandFullFrame=1` requests the model maximum, 212.0 x 350.0 mm, then the
+scanner's live limits apply. This measures the active raster and avoids
+trimming requested edge content. Set `ExpandFullFrame=0` in
+`/etc/sane.d/brother2-geometry.conf` to apply the Windows origin/margin crop,
+with sub-0.1 mm precision and outward rounding. The rule is gated to USB
+product `04f9:0180`, flatbed source, and a zero left/top request; other models
+and ADF scans are untouched.
 
-For an A4 request at 300 dpi, the expected calibrated millimeter bounds are about 208.0 x 291.0 mm. A larger request is capped at the Windows model maximum of about 212.0 x 350.0 mm before correction, then at the scanner-reported limits. After the backend's 16-dot horizontal alignment, the A4 frame should be approximately 2464 x 3437 pixels. This agrees with the measured 3437 raster rows and the original TWAIN emulator's 3437-row A4 geometry. It removes the synthetic white right/bottom extent from the SANE frame; it cannot recreate pixels the device did not transmit.
+With full-range mode enabled, the nominal request is about 212.0 x 350.0 mm.
+At 300 dpi that is roughly 2504 x 4134 pixels before alignment and live device
+clamps. Earlier logs reported `max_rows=4086`, so the actual height should be
+limited to that raster range. The full-range scan is an exploratory
+measurement; it may include blank area beyond A4 and will show whether the
+scanner returns additional edge rows. The Windows crop mode remains available
+for comparison.
 
 ## Why this changes the scan origin handling
 
