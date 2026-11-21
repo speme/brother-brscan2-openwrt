@@ -1,0 +1,94 @@
+--- a/brscan/backend_src/brother_scanner.c
++++ b/brscan/backend_src/brother_scanner.c
+@@ -68,6 +68,8 @@
+ static size_t scan_padding_remaining;
+ static int scan_padding_active;
+ static LONG scan_received_rows;
++static unsigned long scan_packet_rows, scan_white_rows, scan_decode_zero, scan_decoded_rows;
++static unsigned scan_last_status;
+ 
+ HANDLE	hGray;			//Gray table from brgray.bin
+ 
+@@ -462,6 +464,8 @@
+ 	scan_padding_remaining = 0;
+ 	scan_padding_active = 0;
+ 	scan_received_rows = 0;
++	scan_packet_rows = scan_white_rows = scan_decode_zero = scan_decoded_rows = 0;
++	scan_last_status = 0;
+ 	nPageScanCnt = 0;	// clear the debug-counter 
+ 
+ 	nReadCnt = 0;	// clear the debug-counter 
+@@ -513,6 +517,20 @@
+ 			// send the start-scan-command
+ 			//
+ 			nCmdStrLen = MakeupScanStartCmd( this, szCmdStr );
++			/* Print the actual bytes before transport, with controls escaped. */
++			{
++				int i;
++				fprintf(stderr, "brother2 start command: source=%u dpi=%u,%u bytes=%d cmd=",
++				        (unsigned)this->devScanInfo.wScanSource,
++				        (unsigned)this->devScanInfo.DeviceScan.wResoX,
++				        (unsigned)this->devScanInfo.DeviceScan.wResoY, nCmdStrLen);
++				for (i = 0; i < nCmdStrLen && i < MFCMAXCMDLENGTH; ++i) {
++					unsigned char c = (unsigned char)szCmdStr[i];
++					if (c >= 32 && c < 127) fputc(c, stderr);
++					else fprintf(stderr, "\\x%02x", (unsigned)c);
++				}
++				fputc('\n', stderr);
++			}
+ 			if (WriteDeviceCommand( this->hScanner, 
+ 						(LPBYTE)szCmdStr, 
+ 						nCmdStrLen, 
+@@ -1119,10 +1137,15 @@
+ 	WriteLog( "<<<<< PageScan End <<<<< nFwLenTotal = %d lpFwLen = %d ",nFwLenTotal, *lpFwLen);
+ 
+ 	if (nAnswer == SCAN_EOF && *lpFwLen == 0)
++	{
+ 		fprintf(stderr, "brother2 scan summary: rows=%ld/%ld bytes=%ld row_bytes=%ld received_rows=%ld\n",
+ 		        (long)lRealY, (long)this->scanInfo.ScanAreaSize.lHeight,
+ 		        (long)nFwLenTotal, (long)this->scanInfo.ScanAreaByte.lWidth,
+ 		        (long)scan_received_rows);
++		fprintf(stderr, "brother2 packet summary: raster_packets=%lu white_packets=%lu decoded_rows=%lu zero_output=%lu last_status=0x%02x pending_rx=%lu\n",
++		        scan_packet_rows, scan_white_rows, scan_decoded_rows, scan_decode_zero,
++		        scan_last_status, (unsigned long)dwRxTempBuffLength);
++	}
+ 
+ 	return rc;
+ }
+@@ -2022,6 +2045,10 @@
+ 	//
+ 	lpScanAreaDot->left  = ( lpScanAreaDot->left  + 0x8 ) & 0xFFF0;
+ 	lpScanAreaDot->right = ( lpScanAreaDot->right + 0x8 ) & 0xFFF0;
++	fprintf(stderr, "brother2 scan area: left=%ld top=%ld right=%ld bottom=%ld max_rows=%ld\n",
++	        (long)lpScanAreaDot->left, (long)lpScanAreaDot->top,
++	        (long)lpScanAreaDot->right, (long)lpScanAreaDot->bottom,
++	        (long)this->devScanInfo.dwMaxScanRaster);
+ 
+ }
+ 
+@@ -2092,13 +2119,16 @@
+ 			//
+ 			WriteLog( "Header=%2x  ", (BYTE)Header );
+ 
++			scan_last_status = (BYTE)Header;
+ 			answer = GetStatusCode( Header );
+ 			break;	//break for
+ 		}else{
+ 			//
+ 			//	Scanned Data
+ 			//
++			scan_packet_rows++;
+ 			if( Header == 0 ){
++				scan_white_rows++;
+ 				//
+ 				//	White line
+ 				//
+@@ -2142,6 +2172,8 @@
+ #endif
+ 
+ 					dwWriteImageSize = this->scanDec.lpfnScanDecWrite( &ImgLineProcInfo, &nWriteLineCount );
++					if (nWriteLineCount > 0) scan_decoded_rows += nWriteLineCount;
++					else scan_decode_zero++;
+ 					WriteLog( "\tlpFwBuf = %X, WriteSize = %d, LineCount = %d, RealY = %d", lpFwBuf, dwWriteImageSize, nWriteLineCount, lRealY );
+ 
+ #ifdef NO39_DEBUG

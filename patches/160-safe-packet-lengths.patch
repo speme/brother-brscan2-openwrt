@@ -1,0 +1,55 @@
+--- a/brscan/backend_src/brother_scanner.c
++++ b/brscan/backend_src/brother_scanner.c
+@@ -608,6 +608,7 @@
+ 		}else{
+ 			if (headch == 0) {
+ 				length = 1;
++				nDataSize -= length;
+ 				pt += length;
+ 			}
+ 			else {
+@@ -617,7 +618,7 @@
+ 					length = 0;		// clear
+ 				else
+ 					// Acquire the information of raster data size
+-					length = *(WORD *)( pt + 1 );	// format: [HEADER(1B)][LENGTH(intel 2B)][DATA...]
++					length = ((WORD)pt[1] | ((WORD)pt[2] << 8));	// format: [HEADER(1B)][LENGTH(intel 2B)][DATA...]
+ 				
+ 				if( nDataSize < ( length + 3) ){	// length+3 = head(1B)+length(2B)+data(length)
+ 					break;
+@@ -844,7 +845,7 @@
+ 					length = 0;		// clear
+ 				else{
+ 					// get the length information of raster data 
+-					length = *(WORD *)( pt + 1 );	// format: [HEADER(1B)][LENGTH(intel 2B)][DATA...]
++					length = ((WORD)pt[1] | ((WORD)pt[2] << 8));	// format: [HEADER(1B)][LENGTH(intel 2B)][DATA...]
+ 					nLength = length+3;   //05/07/31
+ 				}
+ 				if( dwRxTempBuffLength < (DWORD)( length + 3) ){	// length+3 = head(1B)+length(2B)+data(length)
+@@ -910,7 +911,7 @@
+ 				unsigned char* pData;
+ 
+ 				// get the lenght-information of the raster data
+-				length = *(WORD *)( lpOrg + 1 );	// format: [HEADER(1B)][LENGTH(intel 2B)][DATA...]
++				length = ((WORD)lpOrg[1] | ((WORD)lpOrg[2] << 8));	// format: [HEADER(1B)][LENGTH(intel 2B)][DATA...]
+ 				length += 3;
+ 				pData = (unsigned char *)lpOrg;
+ 			
+@@ -1330,7 +1331,7 @@
+ 					length = 0;		// 初期化
+ 				else
+ 					// ラスタデータ長の取得
+-					length = *(WORD *)( pt + 1 );	// format: [HEADER(1B)][LENGTH(intel 2B)][DATA...]
++					length = ((WORD)pt[1] | ((WORD)pt[2] << 8));	// format: [HEADER(1B)][LENGTH(intel 2B)][DATA...]
+ 				
+ 				if( dwRxTempBuffLength < (DWORD)( length + 3) ){	// length+3 = head(1B)+length(2B)+data(length)
+ 					break;
+@@ -2146,7 +2147,7 @@
+ 				//
+ 				//	Scanner data
+ 				//
+-				Dcount = (DWORD)*( (WORD *)lpScn );	// data length
++				Dcount = ((DWORD)lpScn[0] | ((DWORD)lpScn[1] << 8));	// data length
+ 				count  = (WORD)Dcount;		// data length
+ 				lpScn += 2;
+ 				lpSrc = lpScn;

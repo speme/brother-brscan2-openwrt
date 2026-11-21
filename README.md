@@ -71,7 +71,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r11.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r12.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -150,3 +150,21 @@ not improve the tested page. `r11` restores that field and tests full A4
 height (up to 297 mm) only for MFC-7420 flatbed regions otherwise clamped
 by the reported raster limit. It logs reported and requested limits. This
 is experimental; the device may still terminate before the requested end.
+
+`r11` hardware feedback showed `max_rows=4086` and `bottom=3506`,
+with 3437 decoded rows again. The 3437 default-limit hypothesis was not
+confirmed: the override never triggered. `r12` removes that override and
+adds actual start-command logging plus counts of raster packets, white
+packets, decoded rows, zero-output decoder calls, final status header and
+pending receive bytes. `received_rows` is decoded output before padding,
+not an independent USB raster count. These diagnostics distinguish a short
+input stream from decoder row loss; r12 is not an edge-content fix.
+
+During r12 regression testing, UBSan exposed unaligned 16-bit packet-length
+loads. These are now assembled from bytes, including receive-buffer status
+checks and raster processing. The all-white-buffer regression also exposed
+that `StatusChk` advanced its pointer without decrementing its remaining
+byte count; it now consumes one byte per white packet. ASan/UBSan tests cover
+all-white buffers, partial headers, mixed image/white packets, zero-output
+decode calls and status tracking. Neither bug is yet established as the
+cause of the measured 69-row deficit.

@@ -28,6 +28,9 @@ enum {SANE_STATUS_GOOD=0, SANE_STATUS_EOF=5, SANE_STATUS_CANCELLED,
 #define COLOR_TG 4
 #define WriteLog(...) ((void)0)
 static LONG lRealY, scan_received_rows;
+static unsigned long scan_packet_rows, scan_white_rows, scan_decode_zero, scan_decoded_rows;
+static unsigned scan_last_status;
+static unsigned long dwRxTempBuffLength;
 static size_t scan_padding_remaining;
 static int scan_padding_active, nFwLenTotal, FwTempBuffLength;
 typedef struct {
