@@ -1,67 +1,109 @@
-# Porting the MFC-7420 Windows geometry to SANE
+# MFC-7420 scan geometry audit
 
-## Windows model parameters
+## What the Windows files establish
 
-The supplied `TWMF7420U.INI` has these `[Device]` values. Its coordinate unit is one thousandth of an inch:
+`build_dir/windows/TWMF7420U.INI` is the TWAIN model configuration. Its
+coordinates are thousandths of an inch:
 
 ```ini
+MaxDocWidth=8500
+MaxDocHeight=14000
 ScanOriginX=77
 ScanOriginY=118
-LeftMargin=0
-TopMargin=118
 MaxScanWidth=8347
 MaxScanHeight=13780
+LeftMargin=0
+TopMargin=118
+ScanCmdAdjustWidth=2
 ```
 
-The TWAIN DLL's geometry routines subtract `ScanOriginX + LeftMargin` from the document's right edge and `ScanOriginY + TopMargin` from its bottom edge. If a margin exceeds the corresponding origin, the near edge begins at `Margin - Origin`. For the MFC-7420 defaults the near edge stays at `(0,0)` and the far edge is reduced by 77 and 236 thousandths of an inch. At 300 dpi that is about 23 horizontal dots and 71 vertical dots.
+Disassembly of `BrTwdScn.dll` confirms that `CalcScanAreaFromDocSize`
+subtracts the origin and margin from the requested document rectangle, then
+limits it by the configured scan width and height. For an A4 request, the
+vertical calculation is `11693 - 118 - 118 = 11457` thousandths of an inch;
+at 300 dpi this is 3437 rows. This only explains the Windows **A4 geometry**.
+The geometry emulator substitutes values from the INI and does not emulate
+Windows USB transfers, the scan engine, or the final TWAIN image transfer.
 
-The Linux backend retains the Windows crop values, but full-frame requests
-whose top-left is `(0,0)` default to the calibrated usable area. Earlier r21-r24
-builds probed beyond the nominal width to investigate the origin offset. That
-made a 217.9 mm / 2576-pixel frame, wider than the 215.9 mm (8.5 in) Legal and
-Letter page width. r25 sets the geometric request to 8500 thousandths of an
-inch (215.9 mm) and rounds the right edge outward to the scanner's 16-pixel
-boundary. At 300 dpi, the 2550-pixel physical width therefore becomes 2560
-columns, about 0.85 mm of alignment margin. The backend raises the queried
-horizontal pixel cap to match, implementing the effect of Windows
-`ScanCmdAdjustWidth=2` for a zero left edge. Set
-`ExpandFullFrame=0` in
-`/etc/sane.d/brother2-geometry.conf` to apply the Windows origin/margin crop
-and retain the queried width cap. This applies only to USB product
-`04f9:0180`, flatbed source, and a zero left/top request; other models and ADF
-scans are untouched.
+The Windows TWAIN configuration explicitly permits a 14-inch document
+rectangle (`MaxDocHeight=14000`). With the recorded origin and top margin,
+Legal height becomes `14000 - 118 - 118 = 13764` thousandths of an inch.
+`MaxScanHeight=13780` does not reduce that value. At 300 dpi the resulting
+TWAIN height is about 4129 rows. Horizontally, `MaxDocWidth=8500`, minus the
+77-thou X origin and limited by `MaxScanWidth=8347`, yields 8347 thou, or
+about 2504 pixels at 300 dpi before the DLL's device-adjustment step.
 
-With r21 full-range mode enabled, the nominal request was about 217.9 x 350.0 mm.
-`MaxScanHeight=13780` is the 350 mm model/ADF limit. r23 requested Legal
-length (355.6 mm) and raised `dwMaxScanRaster` to 4200 rows at 300 dpi. The
-device still ended normally after exactly 3437 raster packets. This matches
-the backend's original `MFCSCAN600FBRASTER=6874` limit divided by two at 300 dpi
-and the calibrated flatbed length `MFCSCANFBHEIGHT=2910` (291 mm). The Windows
-`ScanOriginY + TopMargin=236` thou subtracts about 6 mm from the 297 mm glass.
-r24 therefore uses 11457 thou (291 mm) as the flatbed output height and leaves
-the raster cap intact, avoiding synthetic white rows beyond the received scan.
-The r25 frame width is 2560 columns at 300 dpi, aligned outward from the nominal
-2550-pixel Legal/Letter width.
-The r20 hardware scan accepted
-`A=0,0,2544,4086`, reported `row_bytes=2544`, `max_pixels=2550`, and returned
-3437 raster rows. With the old 4086-row request, 649 rows were synthesized as
-white at EOF; the r23 4200-row request produced 763 white rows. r24's 291 mm
-frame is 3437 rows at 300 dpi, aligning the SANE frame with the received
-flatbed raster. r21 tests the next
-horizontal range beyond the glass; its aligned width was 2576 dots. That sample
-only showed the edge marks within the oversized frame; it did not establish
-that 2576 dots was the correct Legal/Letter width.
-The new `brother2 decoder summary` log reports decoded row lengths and the
-rightmost nonwhite pixel for a hardware-side comparison.
+These are the Windows model's calculated bounds. I extended
+`tools/probe_windows_geometry.py` to execute the original DLL routines for
+both A4 and Legal input. It returns Legal rectangle `(0, 0, 8347, 13764)` and
+4129 rows at 300 dpi. The probe does not yet emulate the later
+`AdjustDeviceScanArea` call or the USB transfer. The adjustment function calls
+`CDevProp::GetDevMinScanWidth` (VA `0x100016f0`), which returns the INI value
+`MinScanWidth=16`, and `GetScanWidthAdjustTypeInfo` (VA `0x10001740`), which
+returns `ScanCmdAdjustWidth=2`. In `AdjustDeviceScanArea`, mode 2 rounds a
+non-aligned extent up to that step. At X=0, it selects a dedicated right-edge
+cap; otherwise it uses the regular scan-area cap. This confirms the Linux
+16-pixel outward rounding for a zero-origin flatbed width. The exact value
+feeding that final right-edge cap is still being traced.
 
-## Why this changes the scan origin handling
+## What the OpenWrt logs establish
 
-The USB `A=left,top,right,bottom` field describes the device scan rectangle. `A=0,0,...` is already the earliest left/top coordinate used by this backend. The Windows `ESC S ... FB` command selects the flatbed source; it does not set a spatial origin. The Windows model values are calibration geometry, so the Linux port changes the frame's calibrated bounds rather than shifting returned pixel rows after the scan.
+The logs show two different quantities that were conflated in earlier notes:
 
-The former r13 experiment shifted decoded pixels right and down. It did not change the USB scan command and was based on synthetic WIA model dimensions. That post-read shift has been removed.
+* `scan area` and `start command A=...` are the **requested** raster bounds.
+  Increasing `right` or `bottom` proves only that Linux sent a larger request.
+* `raster_packets=3437` / `received_rows=3437` is the number of raster rows
+  the backend decoded before the device's `0x80` end status. `rows=4200` is
+  the SANE frame length, which the current EOF-padding code can fill with
+  synthetic white rows. It does not mean the scanner returned 4200 image rows.
+* `row_bytes` in the summary is the backend's output stride. It does not by
+  itself prove that the scanner supplied meaningful pixels across that width.
 
-## Maximum document size versus active scan geometry
+The repeated 3437-row result after requests for 4086, 4200, and larger rows
+therefore indicates that the device returned a shorter flatbed stream than
+the requested SANE frame. The count is also exactly the Windows-calculated
+A4 geometry above, but that numerical match does **not** establish that the
+Windows driver requested or received the same stream. We have not captured a
+Windows USB scan to compare.
 
-Brother's MFC-7420 user guide lists the flatbed glass size as 215.9 x 297 mm. That is the physical document limit. The INI's `MaxScanWidth=8347` means about 212.0 mm. `MaxScanHeight=13780` means about 350.0 mm and is not the flatbed glass length; the Windows configuration also covers the ADF path. The Linux backend applies these Windows model caps and continues to use the scanner's queried pixel/raster limits for device clamping. The live flatbed raster limit is lower than the Windows maximum height. The runtime logs currently show a reported `max_rows=4086`, which is a device clamp value, not the number of rows returned in the A4 scan (3437).
+The upstream backend source has fixed MFC flatbed constants
+`MFCSCANFBHEIGHT=2910` (0.1 mm units) and `MFCSCAN600FBRASTER=6874` (600 dpi,
+3437 rows at 300 dpi). These are software model limits, not an independent
+measurement of this machine's glass. The live I-command values and observed
+end-of-stream count disagree, so the I-command height should not be presented
+as a verified physical limit without raw response/capture evidence.
 
-Sources: `build_dir/windows/TWMF7420U.INI`, disassembly of `BrTwdScn.dll` routines `0x1001c290` and `0x1001c3f0`, `docs/windows-mfc7420-geometry.md`, and Brother's [MFC-7420 User's Guide](https://www.brother-usa.com/-/media/brother/product-catalog-media/documents/2020/08/17/13/31/um_mfc7420_fr.pdf).
+## Confirmed implementation risks
+
+1. The prior geometry patch hard-coded a 291 mm full-frame height and inferred
+   Windows behavior from the A4 row-count coincidence. The current r28 source
+   uses the Windows Legal effective height (`14000 - 118 - 118 = 13764` thou)
+   and applies the document envelope only when the requested rectangle reaches
+   the full scan range. Smaller top-left crops are not expanded.
+2. The prior Linux patch also changed `dwMaxScanPixels` to permit overscan.
+   That unrelated cap mutation has been removed. The 16-pixel outward width
+   alignment follows Windows' `MinScanWidth=16` and adjustment mode 2. The
+   final Windows right-edge cap value remains to be mapped exactly.
+3. The source-specific SANE range update trusts the parsed I-command values.
+   The reported flatbed 355.6 mm range differs from the Windows TWAIN
+   calculated Legal height (349.6 mm after calibration offsets). An advertised
+   option range is not proof of acquired image area; the Windows values should
+   take precedence for this port, and the discrepancy should be resolved by
+   following the Windows DLL path.
+4. `InitOptions` used a function-local `static` default rectangle and then
+   reduced its bottom-right values to each device's reported range. That
+   mutation persisted across later opens, so a smaller-range device could
+   permanently narrow subsequent defaults. r28 makes the rectangle local to
+   each call and restores the model defaults on every open.
+5. Padding early EOF to the requested frame makes files rectangular but
+   hides the device's shorter data stream by adding white rows. It should be
+   kept distinct from image data and must not be used to claim full-area
+   scanning.
+
+## Conclusion and next evidence needed
+
+There were definite errors in the previous interpretation and experimental
+Linux geometry changes. The current patch ports the verified Legal height and
+16-pixel zero-origin width alignment, and preserves smaller crops. The exact
+final right-edge cap and transfer behavior remain to be mapped. Enlarging
+`A=` alone cannot prove that the device returned all data.

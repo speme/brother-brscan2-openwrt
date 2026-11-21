@@ -75,6 +75,14 @@ All addresses below refer to the preferred image base `0x10000000`.
 | `BrTwdScn.dll` / `0x1001c3f0` | `CScanParam::CalcScanAreaFromDocSize` subtracts Y origin and top margin from document height. |
 | `BrTwdScn.dll` / `0x1001c290` | `CalcScanWidthFromDocSizeInch` handles horizontal extent and alignment. |
 | `BrTwdScn.dll` / `0x1001c970` | `AdjustDeviceScanArea` clamps dimensions and applies the width adjustment rule. |
+| `BrScnDev.dll` / `0x100016f0` | `GetDevMinScanWidth` returns the configured `MinScanWidth=16` step. |
+| `BrScnDev.dll` / `0x10001740` | `GetScanWidthAdjustTypeInfo` returns `ScanCmdAdjustWidth=2`. |
+
+`AdjustDeviceScanArea` uses the 16-unit step and rounds upward for adjustment
+mode 2. When the X origin is zero it selects a dedicated right-edge cap;
+otherwise it uses the regular scan-area cap. The Linux backend's zero-origin
+16-pixel ceiling therefore matches the verified width-alignment rule. The
+dedicated cap's exact source field is still under investigation.
 
 The relevant height calculation in `CalcScanAreaFromDocSize` is equivalent
 to the following for the supplied configuration:
@@ -99,7 +107,7 @@ The SANE request previously used a bottom coordinate quantized to 0.1 mm,
 giving a declared 3506 rows rather than the nominal A4 3508. That rounding
 difference is separate from the effective Windows height of 3437 rows.
 
-## Interpretation of the hardware results
+## What the hardware results do and do not prove
 
 ```text
 r8: rows=3460/3506 bytes=8580800 row_bytes=2480
@@ -107,15 +115,28 @@ r9: rows=3506/3506 bytes=8694880 row_bytes=2480 received_rows=3437
 ```
 
 The earlier end-of-page streaming bug is fixed in r9: it now delivers the
-declared byte count. Its remaining 69 rows are white padding. The 3437
-received rows match the Windows effective-height calculation exactly.
+declared byte count. Its remaining rows are white padding. The count of 3437
+received rows happens to equal the Windows emulator's computed A4 geometry,
+but this match does not prove that Windows sent or received the same raster.
+The geometry emulator supplies INI values to two Windows routines; it does
+not run a Windows scan or inspect its USB stream.
 
-The Windows model therefore has explicit edge handling that the portable
-backend does not fully reproduce. The observed missing height is consistent
-with that handling. This does not prove that firmware can be made to return
-pixels from the outer paper edges. It also does not prove the full Windows
-driver's final canvas layout: the TWAIN/WIA output path and actual Windows
-USB command stream remain to be compared before changing geometry defaults.
+The Windows INI sets `MaxDocHeight=14000`; after the Y-origin and top-margin
+subtractions, a 14-inch rectangle becomes 13764 thousandths of an inch, or
+about 4129 rows at 300 dpi. It sets `MaxDocWidth=8500`; the X-origin and
+`MaxScanWidth=8347` leave 8347 thousandths of an inch, or about 2504 pixels
+at 300 dpi before device adjustment. These Windows TWAIN model values are the
+reference for the Linux port. They are geometry outputs, not a captured USB
+transfer. The fixed upstream Linux constants (`MFCSCANFBHEIGHT=2910` and
+3437 rows at 300 dpi) differ and should not override the Windows model without
+evidence from the Windows DLL flow. See
+[`mfc7420-windows-geometry-port.md`](mfc7420-windows-geometry-port.md) for
+the port audit and known Linux deviations.
+
+The hardware summaries distinguish the requested frame size from data that
+arrived: `rows` is the SANE frame after padding, while `received_rows` and
+`raster_packets` count decoded raster data. `row_bytes` is the output stride,
+not proof of meaningful pixels over the full requested width.
 
 For a scan-quality check, place a continuous frame several millimeters
 inside the paper edges. A curve drawn on the paper edge cannot distinguish
@@ -137,5 +158,7 @@ python3 -m venv --system-site-packages /tmp/brother-reverse-env
 
 The probe checks the DLL hash before using fixed function addresses. Its
 only emulated external operation is the device-property getter, which
-returns the supplied INI values. It asserts 3437 rows for that configuration
-and 3508 for the zero-Y-offset counterfactual.
+returns the supplied INI values. It asserts 3437 rows for the configured A4
+rectangle, 4129 for Legal after the same offsets, and 3508 for an A4
+zero-Y-offset counterfactual. It does not emulate the later device adjustment
+or a complete Windows hardware scan.

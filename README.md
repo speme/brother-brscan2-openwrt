@@ -104,13 +104,16 @@ has caused `scanimage` to segfault on the tested OpenWrt router and its cause
 has not yet been established. Scaling is not implemented by this decoder;
 scan resolutions other than those tested may produce incorrect results.
 
-For the 300 dpi flatbed edge issue, see
-[Windows MFC-7420 geometry analysis](docs/windows-mfc7420-geometry.md).
-The supplied Windows TWAIN DLL computes the same 3437-row effective A4
-height observed from the device; r9 pads that input to the SANE frame size.
-The analysis includes the model parameters and a machine-code emulator
-probe, and distinguishes the range calculation from the unverified final
-Windows output layout.
+For the flatbed geometry investigation, see
+[Windows MFC-7420 geometry analysis](docs/windows-mfc7420-geometry.md) and
+[the reconciled geometry audit](docs/mfc7420-windows-geometry-port.md).
+The Windows DLL emulator computes 3437 rows for its configured A4 rectangle.
+The Windows INI also configures a 14-inch document height, which computes to
+about 4129 rows at 300 dpi after its recorded Y-origin and top-margin offsets.
+Release r28 ports those Legal-size model values into the MFC-7420 flatbed
+full-frame path. This is a geometry calculation port, not proof that the
+scanner returns the full requested raster; the unresolved difference between
+requested and received rows is documented in the geometry audit.
 
 ## Build
 
@@ -169,32 +172,13 @@ all-white buffers, partial headers, mixed image/white packets, zero-output
 decode calls and status tracking. Neither bug is yet established as the
 cause of the measured 69-row deficit.
 
-`r21` expanded MFC-7420 flatbed requests whose top-left is `(0,0)` to 8577
-thousandths of an inch (about 217.9 mm), 1.96 mm beyond the 215.9 mm flatbed
-glass width. That was an overscan experiment and is wider than US Legal's 8.5
-inch width. r25 sets `FullFrameWidth=8500` (8.5 inches / 215.9 mm) and rounds
-the device request outward to its 16-pixel boundary, yielding 2560 columns at
-300 dpi. This adds about 0.85 mm of alignment margin so the requested 8.5-inch
-width is not rounded down.
-It requested the 350.0 mm model height. r22 briefly changed that to the
-297 mm glass length; r23 probed Legal length and raised the row cap to 4200.
-That scan still ended normally after exactly 3437 raster packets, matching
-Brother's built-in 300 dpi flatbed limit. r24 sets the frame to the calibrated
-291 mm (11457 thousandths of an inch) usable flatbed length, preventing the
-driver from appending a large synthetic white tail. In this exploratory mode it also
-raises the backend's queried horizontal pixel cap to the aligned model limit,
-implementing the effect of Windows `ScanCmdAdjustWidth=2` for a zero left edge.
-The r20 hardware scan accepted a 2544-column request and returned
-2544-byte rows. r21 rounds the width outward to the next 0.1 mm SANE unit and
-16-dot alignment. The logs include
-`max_pixels` to show the cap passed to the device-area calculation. Set
-`ExpandFullFrame=0` in `/etc/sane.d/brother2-geometry.conf` to restore the
-Windows origin/margin crop and queried device cap. The scan origin remains 0,
-so this extends the right edge only. Results beyond the glass may be blank or
-clamped by the scanner. Other scanners and requests with a
-nonzero top-left are unchanged. r22 and later log decoded grayscale row lengths
-and the rightmost nonwhite pixel so packet decoding can be distinguished from
-SANE frame padding.
+The Windows TWAIN model calculates a Legal scan rectangle of 8347 by 13764
+thousandths of an inch after its configured origin and margins. Release r28
+uses those values for the MFC-7420 flatbed full-frame path. The SANE option
+range and requested `A=` bounds still do not prove that the scanner returns
+those pixels; the observed USB stream has ended after 3437 rows. See the
+geometry audit for the recovered Windows behavior and remaining hardware
+questions.
 
 The settings are in `/etc/sane.d/brother2-geometry.conf`, registered as a
 package conffile. Set `ExpandFullFrame=0` to apply the Windows origin/margin
@@ -203,9 +187,9 @@ top-left is `(0,0)`. The log reports `brother2 MFC-7420 TWAIN geometry`. See
 [`docs/mfc7420-windows-geometry-port.md`](docs/mfc7420-windows-geometry-port.md)
 for the reverse-engineering evidence and remaining hardware limits.
 
-The SANE `br-x`/`br-y` option ranges now use the scanner's I-command width and
-flatbed-height limits. Selecting `FlatBed` or `Automatic Document Feeder`
-updates the advertised height range and notifies SANE frontends to reload
-options. Query the active source's limits with `scanimage -A`; the flatbed
-height is read from the device capability response rather than reusing the
-ADF's Legal-length range.
+The SANE `br-x`/`br-y` option ranges use the device I-command width and a
+source-specific height. `scanimage -A` reports an advertised range, not the
+Windows-computed rectangle or the actual acquired raster. Release r28 also
+resets the per-open default rectangle so a previously opened smaller-range
+device cannot permanently narrow later defaults. See the geometry audit
+before interpreting these values.

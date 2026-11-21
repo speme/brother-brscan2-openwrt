@@ -52,6 +52,11 @@
  static
  SANE_Status
  InitOptions (Brother_Scanner *this)
+@@ -190,3 +211,3 @@
+ #else  //M-LNX-58
+-  static SANE_Word rangXY_DEF[4]= { SANE_FIX(0.0),
++  SANE_Word rangXY_DEF[4]= { SANE_FIX(0.0),
+                                     SANE_FIX(0.0),
 @@ -193,7 +214,8 @@
                                      SANE_FIX(355.6) };
  #endif //M-LNX-58

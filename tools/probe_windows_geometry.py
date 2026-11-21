@@ -67,17 +67,21 @@ def call(rva, parameters):
     cpu.reg_write(UC_X86_REG_ECX, 0x20000000)
     cpu.emu_start(base + rva, 0, count=100000)
 
-def probe():
-    # 8268 x 11693 in 0.001 inch units approximates 210 x 297 mm.
-    call(0x1c3f0, [8268, 11693, 1, 0x20003000])
+def probe(document_width, document_height):
+    call(0x1c3f0, [document_width, document_height, 1, 0x20003000])
     rect = struct.unpack("<4I", cpu.mem_read(0x20003000, 16))
     call(0xa280, [300, rect[3] - rect[1], 0x20004000])
     rows = struct.unpack("<I", cpu.mem_read(0x20004000, 4))[0]
     return {"rectangle_milli_inch": rect, "rows_300dpi": rows}
 
-result = {"dll_sha256": expected, "model_configuration": probe()}
+result = {
+    "dll_sha256": expected,
+    "a4_document": probe(8268, 11693),
+    "legal_document": probe(device.getint("MaxDocWidth"), device.getint("MaxDocHeight")),
+}
 area[7] = area[10] = 0
-result["counterfactual_zero_y_origin_and_margin"] = probe()
-assert result["model_configuration"]["rows_300dpi"] == 3437
-assert result["counterfactual_zero_y_origin_and_margin"]["rows_300dpi"] == 3508
+result["a4_zero_y_origin_and_margin"] = probe(8268, 11693)
+assert result["a4_document"]["rows_300dpi"] == 3437
+assert result["legal_document"]["rows_300dpi"] == 4129
+assert result["a4_zero_y_origin_and_margin"]["rows_300dpi"] == 3508
 print(json.dumps(result, indent=2))
