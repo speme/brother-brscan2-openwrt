@@ -1,0 +1,44 @@
+--- a/brscan/backend_src/brother2.c
++++ b/brscan/backend_src/brother2.c
+@@ -674,7 +674,8 @@
+   //if (usb_set_configuration(this->hScanner, 1))
+   //   return SANE_STATUS_IO_ERROR;
+ 
+-  errornum = usb_set_configuration(this->hScanner, 1);
++  /* Keep the configuration selected by USB enumeration. */
++  errornum = 0;
+ 
+   //M-LNX-148 move to OpenDevice
+   //if (usb_claim_interface(this->hScanner, 1))
+@@ -708,7 +709,8 @@
+ 		    //   return SANE_STATUS_IO_ERROR;		    
+ 		    //(M-LNX-24 2006/04/11 kado for Fedora5 USB2.0) 
+ 		    //errornum = usb_set_configuration(this->hScanner->usb, 1);
+-		    errornum = usb_set_configuration_or_reset_toggle(this, 1);
++		    /* Keep the configuration selected by USB enumeration. */
++		    errornum = 0;
+ 
+ 		    //M-LNX-148 move to OpenDevice
+ 		    //if (usb_claim_interface(this->hScanner->usb, 1))
+--- a/brscan/backend_src/brother_scanner.c
++++ b/brscan/backend_src/brother_scanner.c
+@@ -262,7 +262,8 @@
+ 		//if (usb_set_configuration(this->hScanner, 1))
+ 		//	return SANE_STATUS_IO_ERROR;
+ 
+-		errornum = usb_set_configuration(this->hScanner, 1);
++		/* Keep the configuration selected by USB enumeration. */
++		errornum = 0;
+ 		//M--LNX-148 move to OpenDevice
+ 		//if (usb_claim_interface(this->hScanner, 1))
+ 		//	return SANE_STATUS_IO_ERROR;
+@@ -292,7 +293,8 @@
+ 		    // degrade :  2006/04/05 M-LNX-23 kado 
+ 		    //(M-LNX-24 2006/04/11 kado for Fedora5 USB2.0) 
+ 		    //errornum = usb_set_configuration(this->hScanner->usb, 1);
+-		    errornum = usb_set_configuration_or_reset_toggle(this, 1); 
++		    /* Keep the configuration selected by USB enumeration. */
++		    errornum = 0; 
+ 		    //M--LNX-148 move to OpenDevice
+ 		    //if (usb_claim_interface(this->hScanner->usb, 1))
+ 		    //  return SANE_STATUS_IO_ERROR;

@@ -115,6 +115,12 @@ full-frame path. This is a geometry calculation port, not proof that the
 scanner returns the full requested raster; the unresolved difference between
 requested and received rows is documented in the geometry audit.
 
+Release r29 stops resetting USB configuration 1 during device open and scan
+start. OpenWrt logs showed the backend resetting configuration 1 while the
+kernel's `usblp` driver owned the printer interface, followed by scanner-open
+failures. This change relies on the configuration already selected during USB
+enumeration; hardware verification is still required.
+
 ## Build
 
 Build with the matching OpenWrt 25.12 SDK and `packages` feed enabled:
