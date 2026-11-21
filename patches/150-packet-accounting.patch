@@ -55,13 +55,14 @@
  
  	return rc;
  }
-@@ -2022,6 +2045,10 @@
+@@ -2022,6 +2045,11 @@
  	//
  	lpScanAreaDot->left  = ( lpScanAreaDot->left  + 0x8 ) & 0xFFF0;
  	lpScanAreaDot->right = ( lpScanAreaDot->right + 0x8 ) & 0xFFF0;
-+	fprintf(stderr, "brother2 scan area: left=%ld top=%ld right=%ld bottom=%ld max_rows=%ld\n",
++fprintf(stderr, "brother2 scan area: left=%ld top=%ld right=%ld bottom=%ld max_pixels=%ld max_rows=%ld\n",
 +	        (long)lpScanAreaDot->left, (long)lpScanAreaDot->top,
 +	        (long)lpScanAreaDot->right, (long)lpScanAreaDot->bottom,
++	        (long)this->devScanInfo.dwMaxScanPixels,
 +	        (long)this->devScanInfo.dwMaxScanRaster);
  
  }

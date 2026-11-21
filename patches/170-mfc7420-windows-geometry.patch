@@ -10,7 +10,7 @@
  #include "sane/sane.h"
  
  #include "brother_dtype.h"
-@@ -1823,6 +1827,82 @@ GetScanAreaParam( Brother_Scanner *this )
+@@ -1823,4 +1827,86 @@ GetScanAreaParam( Brother_Scanner *this )
  	this->scanInfo.ScanAreaMm = this->uiSetting.ScanAreaMm;
 +	/*
 +	 * Port the MFC-7420 values and coordinate mapping from its Windows TWAIN
@@ -60,6 +60,12 @@
 +		if (expand_full_frame) {
 +			this->scanInfo.ScanAreaMm.right = max_width;
 +			this->scanInfo.ScanAreaMm.bottom = max_height;
++			/* Probe Windows' ScanCmdAdjustWidth=2 limit beyond the queried cap. */
++			{
++				LONG model_max_pixels = max_width * this->devScanInfo.DeviceScan.wResoX / 254L;
++				if (model_max_pixels > this->devScanInfo.dwMaxScanPixels)
++					this->devScanInfo.dwMaxScanPixels = model_max_pixels;
++			}
 +		} else {
 +		/* Keep sub-0.1 mm precision and round corrected far edges outward. */
 +		right_offset = (scan_origin_x + left_margin) * 254L;

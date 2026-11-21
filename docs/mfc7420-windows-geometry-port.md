@@ -16,22 +16,23 @@ MaxScanHeight=13780
 The TWAIN DLL's geometry routines subtract `ScanOriginX + LeftMargin` from the document's right edge and `ScanOriginY + TopMargin` from its bottom edge. If a margin exceeds the corresponding origin, the near edge begins at `Margin - Origin`. For the MFC-7420 defaults the near edge stays at `(0,0)` and the far edge is reduced by 77 and 236 thousandths of an inch. At 300 dpi that is about 23 horizontal dots and 71 vertical dots.
 
 The Linux backend retains the Windows crop values, but full-frame requests
-whose top-left is `(0,0)` now default to an expanded exploratory range:
-`ExpandFullFrame=1` requests the model maximum, 212.0 x 350.0 mm, then the
-scanner's live limits apply. This measures the active raster and avoids
-trimming requested edge content. Set `ExpandFullFrame=0` in
-`/etc/sane.d/brother2-geometry.conf` to apply the Windows origin/margin crop,
-with sub-0.1 mm precision and outward rounding. The rule is gated to USB
-product `04f9:0180`, flatbed source, and a zero left/top request; other models
-and ADF scans are untouched.
+whose top-left is `(0,0)` default to an expanded exploratory range:
+`ExpandFullFrame=1` requests the model maximum, 212.0 x 350.0 mm. r17 also
+raises the backend's queried horizontal pixel cap to the Windows model width,
+testing the effect of `ScanCmdAdjustWidth=2` for a zero left edge. The scanner
+may still reject or clamp this wider request. Set `ExpandFullFrame=0` in
+`/etc/sane.d/brother2-geometry.conf` to apply the Windows origin/margin crop
+and retain the queried width cap. This applies only to USB product
+`04f9:0180`, flatbed source, and a zero left/top request; other models and ADF
+scans are untouched.
 
 With full-range mode enabled, the nominal request is about 212.0 x 350.0 mm.
-At 300 dpi that is roughly 2504 x 4134 pixels before alignment and live device
-clamps. Earlier logs reported `max_rows=4086`, so the actual height should be
-limited to that raster range. The full-range scan is an exploratory
-measurement; it may include blank area beyond A4 and will show whether the
-scanner returns additional edge rows. The Windows crop mode remains available
-for comparison.
+At 300 dpi that is roughly 2504 x 4134 pixels before 16-dot alignment and
+vertical raster clamping. Earlier scans showed the queried width cap at 2480
+pixels and `max_rows=4086`; r17 probes a 2512-dot aligned width and logs the
+effective width cap. This is experimental: compare `scan area`, USB `A=` and
+`row_bytes` to determine whether the scanner supplies the extra columns. The
+full-range scan may include blank area beyond A4.
 
 ## Why this changes the scan origin handling
 
