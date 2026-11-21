@@ -202,3 +202,10 @@ crop. The settings apply only to MFC-7420 flatbed scans whose requested
 top-left is `(0,0)`. The log reports `brother2 MFC-7420 TWAIN geometry`. See
 [`docs/mfc7420-windows-geometry-port.md`](docs/mfc7420-windows-geometry-port.md)
 for the reverse-engineering evidence and remaining hardware limits.
+
+The SANE `br-x`/`br-y` option ranges now use the scanner's I-command width and
+flatbed-height limits. Selecting `FlatBed` or `Automatic Document Feeder`
+updates the advertised height range and notifies SANE frontends to reload
+options. Query the active source's limits with `scanimage -A`; the flatbed
+height is read from the device capability response rather than reusing the
+ADF's Legal-length range.

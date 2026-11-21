@@ -1,0 +1,128 @@
+--- a/brscan/backend_src/brother.h
++++ b/brscan/backend_src/brother.h
+@@ -189,6 +189,8 @@
+   struct Brother_Scanner    *pNext;
+   SANE_Option_Descriptor     aoptDesc[NUM_OPTIONS];
+   TOptionValue               aoptVal[NUM_OPTIONS];
++  SANE_Range                 scanRangeXmm;
++  SANE_Range                 scanRangeYmm;
+ #endif
+   MODELINF                   modelInf;		// オープンされたデバイス情報
+   MODELCONFIG                modelConfig;       // オープンされたデバイスの各種設定情報
+--- a/brscan/backend_src/brother2.c
++++ b/brscan/backend_src/brother2.c
+@@ -134,9 +134,6 @@
+ 
+ static SANE_String_Const * scanSrcList = 0;
+ 
+-static SANE_Range rangeXmm;
+-static SANE_Range rangeYmm;
+-
+ static SANE_Status
+ SetupScanMode (Brother_Scanner *this, int scanMode)
+ {
+@@ -161,6 +158,30 @@
+    return SANE_STATUS_GOOD;
+ }
+ 
++/* QueryDeviceInfo() fills these limits from the scanner I-command. */
++static void
++UpdateScanAreaRanges (Brother_Scanner *this, int source)
++{
++  double width_mm;
++  double height_mm;
++
++  width_mm = this->devScanInfo.dwMaxScanWidth > 0 ?
++    this->devScanInfo.dwMaxScanWidth / 10.0 :
++    this->modelConfig.SupportScanAreaWidth;
++
++  if (source == SCANSRC_FB && this->devScanInfo.dwMaxScanHeight > 0)
++    height_mm = this->devScanInfo.dwMaxScanHeight / 10.0;
++  else
++    height_mm = this->modelConfig.SupportScanAreaHeight;
++
++  this->scanRangeXmm.min = SANE_FIX(0.0);
++  this->scanRangeXmm.max = SANE_FIX(width_mm);
++  this->scanRangeXmm.quant = SANE_FIX(0.1);
++  this->scanRangeYmm.min = SANE_FIX(0.0);
++  this->scanRangeYmm.max = SANE_FIX(height_mm);
++  this->scanRangeYmm.quant = SANE_FIX(0.1);
++}
++
+ static
+ SANE_Status
+ InitOptions (Brother_Scanner *this)
+@@ -193,7 +214,8 @@
+                                     SANE_FIX(355.6) };
+ #endif //M-LNX-58
+ 
+-  static const SANE_Range *aRangesXY[] = { &rangeXmm,&rangeYmm,&rangeXmm,&rangeYmm };
++  const SANE_Range *aRangesXY[] = { &this->scanRangeXmm, &this->scanRangeYmm,
++                                    &this->scanRangeXmm, &this->scanRangeYmm };
+ 
+   memset(this->aoptDesc,0,sizeof(this->aoptDesc));
+   memset(this->aoptVal,0,sizeof(this->aoptVal));
+@@ -224,22 +246,14 @@
+       return SANE_STATUS_INVAL;
+ 
+   // 読み取り幅のの設定範囲値を取得する。
+-  rangeXmm.min = SANE_FIX(0.0);
+-  rangeXmm.max = SANE_FIX(this->modelConfig.SupportScanAreaWidth);
+-  rangeXmm.quant = SANE_FIX(0.1);
+-
+-  // 最大読み取り幅よりデフォルト値が大きい場合、最大読み取り幅をデフォルトとする。
+-  if (rangXY_DEF[optBRX-optTLX] > rangeXmm.max)
+-    rangXY_DEF[optBRX-optTLX] = rangeXmm.max;
+-
+-  // 読み取り長の設定範囲値を取得する。
+-  rangeYmm.min = SANE_FIX(0.0);
+-  rangeYmm.max = SANE_FIX(this->modelConfig.SupportScanAreaHeight);
+-  rangeYmm.quant = SANE_FIX(0.1);
+-
+-  // 最大読み取り長よりデフォルト値が大きい場合、最大読み取り長をデフォルトとする。
+-  if (rangXY_DEF[optBRY-optTLX] > rangeYmm.max)
+-    rangXY_DEF[optBRY-optTLX] = rangeYmm.max;
++  /* The device I-command reports physical width and flatbed height. */
++  UpdateScanAreaRanges(this, this->modelConfig.SupportScanSrc.bit.ADF ?
++                       SCANSRC_ADF : SCANSRC_FB);
++
++  if (rangXY_DEF[optBRX-optTLX] > this->scanRangeXmm.max)
++    rangXY_DEF[optBRX-optTLX] = this->scanRangeXmm.max;
++  if (rangXY_DEF[optBRY-optTLX] > this->scanRangeYmm.max)
++    rangXY_DEF[optBRY-optTLX] = this->scanRangeYmm.max;
+ 
+   for (iOpt=optCount; iOpt!=optLast; iOpt++)
+     {
+@@ -984,12 +998,32 @@
+ 
+           if ((rc = SetupScanMode( this, id )) != SANE_STATUS_GOOD)
+             return rc;
++          break;
+ 
+ 	case optScanSrc:
+ 
+         if (this->aoptVal[iOpt].s)
+           free (this->aoptVal[iOpt].s); // strdup関数でメモリを確保しているため、直接free()を使用。
+         this->aoptVal[iOpt].s = strdup (pVal);
++        if (!this->aoptVal[iOpt].s)
++          return SANE_STATUS_NO_MEM;
++
++        id = get_scansrc_id(pVal);
++        if (id < 0)
++          return SANE_STATUS_INVAL;
++        UpdateScanAreaRanges(this, id);
++
++        /* Keep the selected rectangle valid under the new source range. */
++        if (this->aoptVal[optBRX].w > this->scanRangeXmm.max)
++          this->aoptVal[optBRX].w = this->scanRangeXmm.max;
++        if (this->aoptVal[optTLX].w > this->scanRangeXmm.max)
++          this->aoptVal[optTLX].w = this->scanRangeXmm.max;
++        if (this->aoptVal[optBRY].w > this->scanRangeYmm.max)
++          this->aoptVal[optBRY].w = this->scanRangeYmm.max;
++        if (this->aoptVal[optTLY].w > this->scanRangeYmm.max)
++          this->aoptVal[optTLY].w = this->scanRangeYmm.max;
++        if (pnInfo)
++          *pnInfo |= SANE_INFO_RELOAD_OPTIONS | SANE_INFO_RELOAD_PARAMS;
+ 
+ 	  break;
+ 	default:
