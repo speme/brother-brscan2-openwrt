@@ -1,0 +1,69 @@
+--- a/brscan/backend_src/brother_scanner.c
++++ b/brscan/backend_src/brother_scanner.c
+@@ -48,6 +48,9 @@
+ #include "brother_deccom.h"
+ 
+ #include "brother_scanner.h"
++#include "brother_origin.h"
++
++static BrotherOrigin scan_origin;
+ 
+ 
+ #ifdef NO39_DEBUG
+@@ -466,6 +469,26 @@
+ 	scan_received_rows = 0;
+ 	scan_packet_rows = scan_white_rows = scan_decode_zero = scan_decoded_rows = 0;
+ 	scan_last_status = 0;
++	memset(&scan_origin, 0, sizeof(scan_origin));
++	/* Restrict the experiment to the tested MFC-7420 full-frame gray mode. */
++	if (this->modelInf.productID == 0x0180 &&
++	    this->devScanInfo.wScanSource == MFCSCANSRC_FB &&
++	    this->devScanInfo.DeviceScan.wResoX == 300 &&
++	    this->devScanInfo.DeviceScan.wResoY == 300 &&
++	    this->devScanInfo.wColorType == COLOR_TG &&
++	    this->scanInfo.ScanAreaDot.left == 0 && this->scanInfo.ScanAreaDot.top == 0 &&
++	    this->scanInfo.ScanAreaByte.lWidth == 2480 &&
++	    this->scanInfo.ScanAreaSize.lHeight == 3506) {
++		int enabled = 1;
++		FILE *config = fopen("/etc/sane.d/brother2-origin.conf", "r");
++		if (config) {
++			if (fscanf(config, "%d", &enabled) != 1) enabled = 0;
++			fclose(config);
++		}
++		if (enabled == 1) brother_origin_reset(&scan_origin, 2480, 3506, 22, 35);
++	}
++	fprintf(stderr, "brother2 origin placement: enabled=%d left_px=%d top_rows=%d\n",
++	        scan_origin.enabled, scan_origin.left, scan_origin.top);
+ 	nPageScanCnt = 0;	// clear the debug-counter 
+ 
+ 	nReadCnt = 0;	// clear the debug-counter 
+@@ -663,7 +686,7 @@
+  *										*
+  ********************************************************************************/
+ int
+-PageScan( Brother_Scanner *this, char *lpFwBuf, int nMaxLen, int *lpFwLen )
++PageScanRaw( Brother_Scanner *this, char *lpFwBuf, int nMaxLen, int *lpFwLen )
+ {
+ 	WORD	wData=0;	// received data size (byte)
+ 	WORD	wDataLineCnt=0;	// number of received lines
+@@ -1150,6 +1173,20 @@
+ 
+ 	return rc;
+ }
++static int origin_raw_read(void *context, char *buffer, int capacity, int *length)
++{
++	return PageScanRaw((Brother_Scanner *)context, buffer, capacity, length);
++}
++
++int
++PageScan(Brother_Scanner *this, char *buffer, int capacity, int *length)
++{
++	if (!scan_origin.enabled || this->scanState.bCanceled)
++		return PageScanRaw(this, buffer, capacity, length);
++	return brother_origin_read(&scan_origin, origin_raw_read, this,
++	                           buffer, capacity, length);
++}
++
+ #elif  BRSANESUFFIX == 1
+ 
+ /********************************************************************************

@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=brother-brscan2
 PKG_VERSION:=0.2.5
-PKG_RELEASE:=12
+PKG_RELEASE:=13
 
 PKG_SOURCE:=brscan2-src-$(PKG_VERSION)-1.tar.gz
 PKG_SOURCE_SUBDIR:=brscan2-src-$(PKG_VERSION)-1/brscan
@@ -28,10 +28,15 @@ define Package/brother-brscan2/description
  The proprietary x86 shared libraries are replaced by portable C sources.
 endef
 
+define Package/brother-brscan2/conffiles
+/etc/sane.d/brother2-origin.conf
+endef
+
 define Build/Prepare
 	$(call Build/Prepare/Default)
 	find $(BRSCAN_DIR) -type f \( -name '*.lo' -o -name '*.o' -o -name '*.a' -o -name '*.so' -o -name '*.so.*' \) -delete
 	find $(BRSCAN_DIR) -type d -name .libs -prune -exec rm -rf {} +
+	$(CP) ./files/brother_origin.h $(BRSCAN_DIR)/backend_src/
 	$(CP) ./files/libbrscandec/. $(BRSCAN_DIR)/libbrscandec2/
 	$(CP) ./files/libbrcolm/. $(BRSCAN_DIR)/libbrcolm2/
 	$(RM) $(BRSCAN_DIR)/libbrscandec2/*.so* $(BRSCAN_DIR)/libbrcolm2/*.so*
@@ -66,6 +71,7 @@ define Build/Compile
 		$(BRSCAN_DIR)/libbrcolm2/brcolm.c
 	cd $(BRSCAN_DIR)/backend_brscan2 && \
 		$(SHELL) mk_backend link && \
+		ln -sfn ../backend_src/brother_origin.h brother_origin.h && \
 		ln -sfn ../sanei/sanei_init_debug.c sanei_init_debug.c && \
 		ln -sfn ../sanei/sanei_config.c sanei_config.c && \
 		ln -sfn ../sanei/sanei_constrain_value.c sanei_constrain_value.c && \
@@ -100,6 +106,7 @@ define Package/brother-brscan2/install
 	$(INSTALL_DATA) ./files/GrayCmData/ALL/brmsl08f.cm $(1)/usr/share/sane/brother/GrayCmData/ALL/
 	$(INSTALL_DATA) ./files/04f9-brscan2.usbid $(1)/usr/share/sane/
 	$(INSTALL_DIR) $(1)/etc/sane.d/dll.d
+	$(INSTALL_DATA) ./files/brother2-origin.conf $(1)/etc/sane.d/
 	$(INSTALL_DATA) ./files/brother2.conf $(1)/etc/sane.d/dll.d/
 endef
 

@@ -71,7 +71,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r12.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r13.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -168,3 +168,20 @@ byte count; it now consumes one byte per white packet. ASan/UBSan tests cover
 all-white buffers, partial headers, mixed image/white packets, zero-output
 decode calls and status tracking. Neither bug is yet established as the
 cause of the measured 69-row deficit.
+
+`r13` tests image placement for the reported upper-left offset. It shifts
+the existing output right by 22 pixels and down by 35 rows, using the
+offsets obtained from the Windows WIA geometry probe with synthetic model
+sizes. These are candidate calibration values, not a measured correction.
+The experiment applies only to MFC-7420 flatbed Gray64 at 300 dpi, zero
+left/top and a 2480 x 3506 frame. It uses one row of memory and preserves
+the frame size. Pixels displaced beyond the right/bottom canvas are cropped;
+the transform does not recover missing edge pixels. Raw packet and decoded
+row statistics remain unchanged, allowing comparisons with r12.
+
+The installed `/etc/sane.d/brother2-origin.conf` contains `1` to enable
+placement; write `0` and restart sane-openwrt to disable it. This file is
+registered as a package conffile. The log reports `brother2 origin placement`.
+Sanitizer tests cover pixel mapping, sub-row reads, draining the raw stream
+to EOF, invalid dimensions, partial rasters and error propagation. Hardware
+calibration still needs a new scan of the same page.
