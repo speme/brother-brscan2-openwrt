@@ -30,14 +30,21 @@ and retain the queried width cap. This applies only to USB product
 `04f9:0180`, flatbed source, and a zero left/top request; other models and ADF
 scans are untouched.
 
-With r21 full-range mode enabled, the nominal request is about 217.9 x 350.0 mm.
-At 300 dpi that is roughly 2574 x 4134 pixels before 16-dot alignment and
-vertical raster clamping. The r20 hardware scan accepted
+With r21 full-range mode enabled, the nominal request was about 217.9 x 350.0 mm.
+That height was a mistake: `MaxScanHeight=13780` is the 350 mm combined/ADF
+model limit, while the flatbed glass is 297 mm. r22 adds `FullFrameHeight=11693`
+thousandths of an inch and uses it for flatbed full-frame requests. At 300 dpi
+the intended frame is about 2574 x 3508 pixels before 16-dot alignment and
+device clamping. The r20 hardware scan accepted
 `A=0,0,2544,4086`, reported `row_bytes=2544`, `max_pixels=2550`, and returned
-3437 raster rows. This confirms the wider horizontal request produces data;
-the remaining 649 rows are padding. The aligned width is about 215.4 mm, close
-to the 215.9 mm glass width. r21 tests the next range beyond the glass; its
-expected aligned width is 2576 dots. The output includes blank area beyond A4.
+3437 raster rows. With the old 4086-row frame, 649 rows were synthesized as
+white at EOF. r22 reduces that artificial trailing band; any remaining EOF
+padding is still reported separately from received rows. r21 tests the next
+horizontal range beyond the glass; its aligned width is 2576 dots. Its test
+image is 2576 pixels wide and contains edge marks through x=2572, so the
+current sample does not show horizontal clipping in the emitted SANE frame.
+The new `brother2 decoder summary` log reports decoded row lengths and the
+rightmost nonwhite pixel for a hardware-side comparison.
 
 ## Why this changes the scan origin handling
 

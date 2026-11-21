@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,6 +27,11 @@ static size_t g_rgb_line_bytes;
 static uint8_t *g_rgb_line;
 static unsigned g_rgb_line_mask;
 static uint8_t g_white_value;
+static uint64_t g_gray_rows;
+static uint64_t g_gray_short_rows;
+static uint64_t g_gray_min_decoded;
+static uint64_t g_gray_max_decoded;
+static uint64_t g_gray_last_dark_max;
 
 ulong ChangeResoInit(undefined8 *opaque)
 {
@@ -82,6 +88,20 @@ long ChangeResoWrite(void *opaque, undefined4 *lines_written)
 	if (!g_rgb_line) {
 		if (size > g_rgb_line_bytes || capacity < g_rgb_line_bytes)
 			return 0;
+		g_gray_rows++;
+		if (size < g_rgb_line_bytes)
+			g_gray_short_rows++;
+		if (g_gray_rows == 1 || size < g_gray_min_decoded)
+			g_gray_min_decoded = size;
+		if (size > g_gray_max_decoded)
+			g_gray_max_decoded = size;
+		for (uint64_t i = size; i > 0; --i) {
+			if (src[i - 1] != g_white_value) {
+				if (i - 1 > g_gray_last_dark_max)
+					g_gray_last_dark_max = i - 1;
+				break;
+			}
+		}
 		/* PackBits rows may omit trailing white pixels. The caller counts
 		 * a full raster, so return a full raster even for an empty row. */
 		memset(dst, g_white_value, g_rgb_line_bytes);
@@ -134,6 +154,11 @@ long ChangeResoWrite(void *opaque, undefined4 *lines_written)
 ulong ChangeResoWriteStart(void)
 {
 	g_rgb_line_mask = 0;
+	g_gray_rows = 0;
+	g_gray_short_rows = 0;
+	g_gray_min_decoded = 0;
+	g_gray_max_decoded = 0;
+	g_gray_last_dark_max = 0;
 	return 1;
 }
 
@@ -141,5 +166,13 @@ long ChangeResoWriteEnd(void *opaque, undefined4 *lines_written)
 {
 	(void)opaque;
 	*lines_written = 0;
+	if (!g_rgb_line && g_gray_rows != 0)
+		fprintf(stderr,
+		        "brother2 decoder summary: rows=%llu width=%zu short_rows=%llu decoded_bytes=%llu..%llu last_nonwhite_x=%llu\n",
+		        (unsigned long long)g_gray_rows, g_rgb_line_bytes,
+		        (unsigned long long)g_gray_short_rows,
+		        (unsigned long long)g_gray_min_decoded,
+		        (unsigned long long)g_gray_max_decoded,
+		        (unsigned long long)g_gray_last_dark_max);
 	return 0;
 }
