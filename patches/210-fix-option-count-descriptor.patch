@@ -1,0 +1,41 @@
+--- a/brscan/backend_src/brother2.c
++++ b/brscan/backend_src/brother2.c
+@@ -258,8 +258,11 @@
+       switch (iOpt)
+ 	{
+ 	case optCount:
++	  pdesc->name   =SANE_NAME_NUM_OPTIONS;
+ 	  pdesc->title  =SANE_TITLE_NUM_OPTIONS;
+ 	  pdesc->desc   =SANE_DESC_NUM_OPTIONS;
++	  pdesc->type   =SANE_TYPE_INT;
++	  pdesc->unit   =SANE_UNIT_NONE;
+ 	  pdesc->cap    =SANE_CAP_SOFT_DETECT;
+ 	  pval->w       =(SANE_Word)optLast;
+ 	  break;
+@@ -927,7 +930,7 @@
+   if (pnInfo)
+     *pnInfo=0;
+ 
+-  if (iOpt>=NUM_OPTIONS)
++  if (!this || iOpt < 0 || iOpt >= NUM_OPTIONS)
+     return SANE_STATUS_INVAL;
+ 
+   cap=this->aoptDesc[iOpt].cap;
+@@ -938,6 +941,8 @@
+       /* ------------------------------------------------------------ */
+ 
+     case SANE_ACTION_GET_VALUE:
++      if (!pVal)
++        return SANE_STATUS_INVAL;
+       switch ((TOptionIndex)iOpt)
+ 	{
+ 	case optCount:
+@@ -959,6 +964,8 @@
+       /* ------------------------------------------------------------ */
+ 
+     case SANE_ACTION_SET_VALUE:
++      if (!pVal)
++        return SANE_STATUS_INVAL;
+       if (!SANE_OPTION_IS_SETTABLE(cap))
+ 	  return SANE_STATUS_INVAL;
+       rc=sanei_constrain_value(this->aoptDesc+iOpt,pVal,pnInfo);

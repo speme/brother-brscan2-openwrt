@@ -121,6 +121,12 @@ kernel's `usblp` driver owned the printer interface, followed by scanner-open
 failures. This change relies on the configuration already selected during USB
 enumeration; hardware verification is still required.
 
+Release r30 corrects SANE option 0 (`num-options`): it now advertises the
+required integer type and unit, and rejects invalid indices or null value
+pointers before dereferencing them. This targets the remote saned crash while
+the Ubuntu client reads option 0. The router-local scan works on r29; remote
+verification of r30 is still pending.
+
 ## Build
 
 Build with the matching OpenWrt 25.12 SDK and `packages` feed enabled:
