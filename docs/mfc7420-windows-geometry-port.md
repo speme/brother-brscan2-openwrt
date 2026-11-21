@@ -16,14 +16,15 @@ MaxScanHeight=13780
 The TWAIN DLL's geometry routines subtract `ScanOriginX + LeftMargin` from the document's right edge and `ScanOriginY + TopMargin` from its bottom edge. If a margin exceeds the corresponding origin, the near edge begins at `Margin - Origin`. For the MFC-7420 defaults the near edge stays at `(0,0)` and the far edge is reduced by 77 and 236 thousandths of an inch. At 300 dpi that is about 23 horizontal dots and 71 vertical dots.
 
 The Linux backend retains the Windows crop values, but full-frame requests
-whose top-left is `(0,0)` default to an expanded exploratory range. r20
-requested the 215.9 mm flatbed glass width and the 350.0 mm model height.
-r21 extends the horizontal request by Windows `ScanOriginX=77` (1.9558 mm),
-to 8577 thousandths of an inch, about 217.9 mm. This probes whether that
-origin offset corresponds to usable area outside the nominal glass width.
-The backend raises the queried horizontal pixel cap and rounds width outward
-through SANE's 0.1 mm units, testing `ScanCmdAdjustWidth=2` for a zero left
-edge. The scanner may return blank overscan or clamp the request. Set
+whose top-left is `(0,0)` default to the calibrated usable area. Earlier r21-r24
+builds probed beyond the nominal width to investigate the origin offset. That
+made a 217.9 mm / 2576-pixel frame, wider than the 215.9 mm (8.5 in) Legal and
+Letter page width. r25 sets the geometric request to 8500 thousandths of an
+inch (215.9 mm) and rounds the right edge outward to the scanner's 16-pixel
+boundary. At 300 dpi, the 2550-pixel physical width therefore becomes 2560
+columns, about 0.85 mm of alignment margin. The backend raises the queried
+horizontal pixel cap to match, implementing the effect of Windows
+`ScanCmdAdjustWidth=2` for a zero left edge. Set
 `ExpandFullFrame=0` in
 `/etc/sane.d/brother2-geometry.conf` to apply the Windows origin/margin crop
 and retain the queried width cap. This applies only to USB product
@@ -39,15 +40,17 @@ and the calibrated flatbed length `MFCSCANFBHEIGHT=2910` (291 mm). The Windows
 `ScanOriginY + TopMargin=236` thou subtracts about 6 mm from the 297 mm glass.
 r24 therefore uses 11457 thou (291 mm) as the flatbed output height and leaves
 the raster cap intact, avoiding synthetic white rows beyond the received scan.
+The r25 frame width is 2560 columns at 300 dpi, aligned outward from the nominal
+2550-pixel Legal/Letter width.
 The r20 hardware scan accepted
 `A=0,0,2544,4086`, reported `row_bytes=2544`, `max_pixels=2550`, and returned
 3437 raster rows. With the old 4086-row request, 649 rows were synthesized as
 white at EOF; the r23 4200-row request produced 763 white rows. r24's 291 mm
 frame is 3437 rows at 300 dpi, aligning the SANE frame with the received
 flatbed raster. r21 tests the next
-horizontal range beyond the glass; its aligned width is 2576 dots. Its test
-image is 2576 pixels wide and contains edge marks through x=2572, so the
-current sample does not show horizontal clipping in the emitted SANE frame.
+horizontal range beyond the glass; its aligned width was 2576 dots. That sample
+only showed the edge marks within the oversized frame; it did not establish
+that 2576 dots was the correct Legal/Letter width.
 The new `brother2 decoder summary` log reports decoded row lengths and the
 rightmost nonwhite pixel for a hardware-side comparison.
 

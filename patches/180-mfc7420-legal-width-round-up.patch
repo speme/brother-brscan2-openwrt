@@ -1,0 +1,11 @@
+--- a/brscan/backend_src/brother_scanner.c
++++ b/brscan/backend_src/brother_scanner.c
+@@ -2082,2 +2082,7 @@ GetDeviceScanArea( Brother_Scanner *this, LPAREARECT lpScanAreaDot )
+ 	lpScanAreaDot->left  = ( lpScanAreaDot->left  + 0x8 ) & 0xFFF0;
+-	lpScanAreaDot->right = ( lpScanAreaDot->right + 0x8 ) & 0xFFF0;
++	if (this->modelInf.productID == 0x0180 &&
++	    this->devScanInfo.wScanSource == MFCSCANSRC_FB &&
++	    lpScanAreaDot->left == 0)
++		lpScanAreaDot->right = ( lpScanAreaDot->right + 0xF ) & 0xFFF0;
++	else
++		lpScanAreaDot->right = ( lpScanAreaDot->right + 0x8 ) & 0xFFF0;

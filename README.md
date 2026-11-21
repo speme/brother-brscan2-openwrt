@@ -71,7 +71,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r24.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r25.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -169,19 +169,22 @@ all-white buffers, partial headers, mixed image/white packets, zero-output
 decode calls and status tracking. Neither bug is yet established as the
 cause of the measured 69-row deficit.
 
-`r21` expands MFC-7420 flatbed requests whose top-left is `(0,0)` to 8577
+`r21` expanded MFC-7420 flatbed requests whose top-left is `(0,0)` to 8577
 thousandths of an inch (about 217.9 mm), 1.96 mm beyond the 215.9 mm flatbed
-glass width. The extra width equals Windows `ScanOriginX=77` and tests whether
-the origin offset leaves usable scan area beyond the nominal glass edge.
+glass width. That was an overscan experiment and is wider than US Legal's 8.5
+inch width. r25 sets `FullFrameWidth=8500` (8.5 inches / 215.9 mm) and rounds
+the device request outward to its 16-pixel boundary, yielding 2560 columns at
+300 dpi. This adds about 0.85 mm of alignment margin so the requested 8.5-inch
+width is not rounded down.
 It requested the 350.0 mm model height. r22 briefly changed that to the
 297 mm glass length; r23 probed Legal length and raised the row cap to 4200.
 That scan still ended normally after exactly 3437 raster packets, matching
 Brother's built-in 300 dpi flatbed limit. r24 sets the frame to the calibrated
 291 mm (11457 thousandths of an inch) usable flatbed length, preventing the
 driver from appending a large synthetic white tail. In this exploratory mode it also
-raises the backend's queried horizontal pixel cap to the corresponding model
-limit, implementing the effect of Windows `ScanCmdAdjustWidth=2` for a zero
-left edge. The r20 hardware scan accepted a 2544-column request and returned
+raises the backend's queried horizontal pixel cap to the aligned model limit,
+implementing the effect of Windows `ScanCmdAdjustWidth=2` for a zero left edge.
+The r20 hardware scan accepted a 2544-column request and returned
 2544-byte rows. r21 rounds the width outward to the next 0.1 mm SANE unit and
 16-dot alignment. The logs include
 `max_pixels` to show the cap passed to the device-area calculation. Set
