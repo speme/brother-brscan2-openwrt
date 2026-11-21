@@ -71,7 +71,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r22.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r23.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
@@ -173,9 +173,12 @@ cause of the measured 69-row deficit.
 thousandths of an inch (about 217.9 mm), 1.96 mm beyond the 215.9 mm flatbed
 glass width. The extra width equals Windows `ScanOriginX=77` and tests whether
 the origin offset leaves usable scan area beyond the nominal glass edge.
-It requested the 350.0 mm model height. That value is the combined model/ADF
-limit, not the flatbed glass size. r22 changes the default full-frame height
-to 11693 thousandths of an inch (297 mm), the physical flatbed length. In this exploratory mode it also
+It requested the 350.0 mm model height. r22 briefly changed that to the
+297 mm documented glass length. r23 makes a deliberate US Legal probe at 14000
+thousandths of an inch (355.6 mm) and raises the device's reported raster cap
+to 4200 rows at 300 dpi. The glass is documented as 297 mm, so this tests
+whether the carriage can travel and return data beyond the glass; blank frame
+padding does not count as captured rows. In this exploratory mode it also
 raises the backend's queried horizontal pixel cap to the corresponding model
 limit, implementing the effect of Windows `ScanCmdAdjustWidth=2` for a zero
 left edge. The r20 hardware scan accepted a 2544-column request and returned
@@ -186,7 +189,7 @@ left edge. The r20 hardware scan accepted a 2544-column request and returned
 Windows origin/margin crop and queried device cap. The scan origin remains 0,
 so this extends the right edge only. Results beyond the glass may be blank or
 clamped by the scanner. Other scanners and requests with a
-nonzero top-left are unchanged. r22 also logs decoded grayscale row lengths
+nonzero top-left are unchanged. r22 and later log decoded grayscale row lengths
 and the rightmost nonwhite pixel so packet decoding can be distinguished from
 SANE frame padding.
 

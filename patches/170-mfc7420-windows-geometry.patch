@@ -10,7 +10,7 @@
  #include "sane/sane.h"
  
  #include "brother_dtype.h"
-@@ -1823,4 +1827,95 @@ GetScanAreaParam( Brother_Scanner *this )
+@@ -1823,4 +1827,100 @@ GetScanAreaParam( Brother_Scanner *this )
  	this->scanInfo.ScanAreaMm = this->uiSetting.ScanAreaMm;
 +	/*
 +	 * Port the MFC-7420 values and coordinate mapping from its Windows TWAIN
@@ -29,7 +29,7 @@
 +		LONG max_width, max_height, full_width, full_height;
 +		LONG expand_full_frame = 1;
 +		LONG full_frame_width = 8577;
-+		LONG full_frame_height = 11693;
++		LONG full_frame_height = 14000;
 +		FILE *geometry = fopen("/etc/sane.d/brother2-geometry.conf", "r");
 +		char line[128];
 +		if (geometry) {
@@ -65,14 +65,19 @@
 +		/* Full-frame mode requests the model maximum; calibration mode is optional. */
 +		if (expand_full_frame) {
 +			this->scanInfo.ScanAreaMm.right = full_width;
-+			/* MaxScanHeight includes the ADF path; the flatbed glass is 297 mm. */
++			/* Probe Legal carriage travel beyond the documented 297 mm glass. */
 +			this->scanInfo.ScanAreaMm.bottom = full_height;
 +			/* Probe Windows' ScanCmdAdjustWidth=2 limit beyond the queried cap. */
 +			{
 +				LONG model_max_pixels =
 +					(full_width * this->devScanInfo.DeviceScan.wResoX + 253L) / 254L;
++				LONG model_max_rows =
++					(full_height * this->devScanInfo.DeviceScan.wResoY + 253L) / 254L;
 +				if (model_max_pixels > this->devScanInfo.dwMaxScanPixels)
 +					this->devScanInfo.dwMaxScanPixels = model_max_pixels;
++				/* Probe beyond the reported flatbed travel limit to Legal length. */
++				if (model_max_rows > this->devScanInfo.dwMaxScanRaster)
++					this->devScanInfo.dwMaxScanRaster = model_max_rows;
 +			}
 +		} else {
 +		/* Keep sub-0.1 mm precision and round corrected far edges outward. */

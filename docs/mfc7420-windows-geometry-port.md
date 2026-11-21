@@ -31,15 +31,17 @@ and retain the queried width cap. This applies only to USB product
 scans are untouched.
 
 With r21 full-range mode enabled, the nominal request was about 217.9 x 350.0 mm.
-That height was a mistake: `MaxScanHeight=13780` is the 350 mm combined/ADF
-model limit, while the flatbed glass is 297 mm. r22 adds `FullFrameHeight=11693`
-thousandths of an inch and uses it for flatbed full-frame requests. At 300 dpi
-the intended frame is about 2574 x 3508 pixels before 16-dot alignment and
-device clamping. The r20 hardware scan accepted
+`MaxScanHeight=13780` is the 350 mm model/ADF limit. r22 temporarily limited
+the flatbed request to the 297 mm glass length. r23 probes US Legal at 14000
+thousandths of an inch (355.6 mm), raising `dwMaxScanRaster` to match the
+requested 4200 rows at 300 dpi. Brother documents the glass as 297 mm, so the
+extra request tests carriage travel beyond the glass; it does not imply the
+area beyond the glass can image a page. The r20 hardware scan accepted
 `A=0,0,2544,4086`, reported `row_bytes=2544`, `max_pixels=2550`, and returned
-3437 raster rows. With the old 4086-row frame, 649 rows were synthesized as
-white at EOF. r22 reduces that artificial trailing band; any remaining EOF
-padding is still reported separately from received rows. r21 tests the next
+3437 raster rows. With the old 4086-row request, 649 rows were synthesized as
+white at EOF. r22 reduced that padding; the r23 Legal probe will report actual
+received rows separately from any EOF padding, showing whether raising the
+device clamp changes carriage output. r21 tests the next
 horizontal range beyond the glass; its aligned width is 2576 dots. Its test
 image is 2576 pixels wide and contains edge marks through x=2572, so the
 current sample does not show horizontal clipping in the emitted SANE frame.
