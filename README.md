@@ -71,7 +71,7 @@ Copy the APK to the router (for example with `scp`), then run as root:
 ```sh
 apk update
 apk add libsane sane-frontends libusb-compat4 usbutils
-apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r17.apk
+apk add --allow-untrusted /tmp/brother-brscan2-0.2.5-r18.apk
 ```
 
 The router must have access to its configured OpenWrt package repositories to
