@@ -1,0 +1,61 @@
+--- a/brscan/backend_src/brother_log.c
++++ b/brscan/backend_src/brother_log.c
+@@ -122,46 +122,27 @@
+ 		char   szStrBuff[ LOGSTRMAXLEN ];
+ 		DWORD  dwStrLen;
+ 
+-		time_t ltime;
++		time_t ltime = 0;
++		struct tm tmBuffer;
+ 		struct tm *sysTime;
+-		void *b_sysTime;
+-#if 1
+-		if(NULL != (sysTime = malloc(sizeof(struct tm))))
+-#else
+-		if(NULL != (sysTime = MALLOC(sizeof(struct tm))))
+-#endif
+-		{
+-			b_sysTime = sysTime;
+-			if( lpszLogStr != NULL ){
+-				//
+-				// 現在のローカル日時を取得
+-				//
+-	
+-				time(&ltime);
+-				sysTime = localtime(&ltime);
+ 
+-				//
+-				// ログ文字列に現在の時刻を追加
+-				//
+-	
++		if (lpszLogStr != NULL) {
++			time(&ltime);
++			sysTime = localtime_r(&ltime, &tmBuffer);
++			if (sysTime != NULL) {
+ 				dwStrLen = sprintf(szStrBuff,
+ 								"%02d:%02d:%02d.%03ld  %s\n",
+ 								sysTime->tm_hour,
+ 								sysTime->tm_min,
+ 								sysTime->tm_sec,
+ 								(ltime%1000),
+-								lpszLogStr
+-							);
+-			}else{
+-	
+-				strcpy( szStrBuff, "\n" );
+-				dwStrLen = 2;
++								lpszLogStr);
++			} else {
++				dwStrLen = sprintf(szStrBuff, "%s\n", lpszLogStr);
+ 			}
+-#if 1
+-			free(b_sysTime);
+-#else
+-			FREE(b_sysTime);
+-#endif
++		} else {
++			strcpy(szStrBuff, "\n");
++			dwStrLen = 2;
+ 		}
+ 		//
+ 		// ログ文字列のライト

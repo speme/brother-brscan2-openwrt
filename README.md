@@ -135,6 +135,12 @@ the `OpenDevice` recovery-buffer free. The r31 trace stopped directly before
 the first post-`OpenDevice` log message, so these checkpoints distinguish a
 failure during cleanup from a later failure in `sane_open`.
 
+Release r33 removes the logger's per-line heap allocation and uses
+`localtime_r` with stack storage. The r32 checkpoints both appeared, while
+saned still faulted at the following allocation, so this avoids making the
+logger's own allocation the first point that detects a damaged heap and lets
+the trace continue into later open stages.
+
 ## Build
 
 Build with the matching OpenWrt 25.12 SDK and `packages` feed enabled:

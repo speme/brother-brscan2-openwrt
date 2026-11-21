@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=brother-brscan2
 PKG_VERSION:=0.2.5
-PKG_RELEASE:=32
+PKG_RELEASE:=33
 
 PKG_SOURCE:=brscan2-src-$(PKG_VERSION)-1.tar.gz
 PKG_SOURCE_SUBDIR:=brscan2-src-$(PKG_VERSION)-1/brscan
