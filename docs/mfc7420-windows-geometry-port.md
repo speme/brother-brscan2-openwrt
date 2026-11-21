@@ -17,9 +17,11 @@ The TWAIN DLL's geometry routines subtract `ScanOriginX + LeftMargin` from the d
 
 The Linux backend retains the Windows crop values, but full-frame requests
 whose top-left is `(0,0)` default to an expanded exploratory range:
-`ExpandFullFrame=1` requests the model maximum, 212.0 x 350.0 mm. r17 also
+`ExpandFullFrame=1` requests the model maximum, 212.0 x 350.0 mm. r19 also
 raises the backend's queried horizontal pixel cap to the Windows model width,
-testing the effect of `ScanCmdAdjustWidth=2` for a zero left edge. The scanner
+rounding 212.0138 mm outward to 212.1 mm to preserve it through SANE's 0.1 mm
+quantization. This tests the effect of `ScanCmdAdjustWidth=2` for a zero left
+edge. The scanner
 may still reject or clamp this wider request. Set `ExpandFullFrame=0` in
 `/etc/sane.d/brother2-geometry.conf` to apply the Windows origin/margin crop
 and retain the queried width cap. This applies only to USB product
@@ -29,7 +31,7 @@ scans are untouched.
 With full-range mode enabled, the nominal request is about 212.0 x 350.0 mm.
 At 300 dpi that is roughly 2504 x 4134 pixels before 16-dot alignment and
 vertical raster clamping. Earlier scans showed the queried width cap at 2480
-pixels and `max_rows=4086`; r17 probes a 2512-dot aligned width and logs the
+pixels and `max_rows=4086`; r19 probes a 2512-dot aligned width and logs the
 effective width cap. This is experimental: compare `scan area`, USB `A=` and
 `row_bytes` to determine whether the scanner supplies the extra columns. The
 full-range scan may include blank area beyond A4.
