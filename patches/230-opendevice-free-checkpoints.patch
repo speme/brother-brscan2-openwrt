@@ -1,0 +1,20 @@
+--- a/brscan/backend_src/brother_devaccs.c
++++ b/brscan/backend_src/brother_devaccs.c
+@@ -39,6 +39,7 @@
+ #include <stdio.h>
+ #include <sys/time.h>
+ #include <signal.h>
++#include <unistd.h>
+ 
+ #include <usb.h>
+ 
+@@ -385,7 +386,9 @@
+ 			}
+ 		}
+ 	}
++	write(2, "brother2 recovery: before buffer free\n", sizeof("brother2 recovery: before buffer free\n") - 1);
+ 	FREE(lpBrBuff);
++	write(2, "brother2 recovery: after buffer free\n", sizeof("brother2 recovery: after buffer free\n") - 1);
+ 
+ 	} //  end of recovery proccess
+ 	

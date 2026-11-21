@@ -130,6 +130,11 @@ Release r31 makes the Brother log append during one open and records stages of
 `sane_get_option_descriptor`. These diagnostics are intended to identify the
 next failing stage; they do not yet claim to fix remote scanning.
 
+Release r32 writes allocation-free checkpoints immediately before and after
+the `OpenDevice` recovery-buffer free. The r31 trace stopped directly before
+the first post-`OpenDevice` log message, so these checkpoints distinguish a
+failure during cleanup from a later failure in `sane_open`.
+
 ## Build
 
 Build with the matching OpenWrt 25.12 SDK and `packages` feed enabled:
