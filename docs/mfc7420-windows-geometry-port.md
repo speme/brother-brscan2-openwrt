@@ -31,17 +31,20 @@ and retain the queried width cap. This applies only to USB product
 scans are untouched.
 
 With r21 full-range mode enabled, the nominal request was about 217.9 x 350.0 mm.
-`MaxScanHeight=13780` is the 350 mm model/ADF limit. r22 temporarily limited
-the flatbed request to the 297 mm glass length. r23 probes US Legal at 14000
-thousandths of an inch (355.6 mm), raising `dwMaxScanRaster` to match the
-requested 4200 rows at 300 dpi. Brother documents the glass as 297 mm, so the
-extra request tests carriage travel beyond the glass; it does not imply the
-area beyond the glass can image a page. The r20 hardware scan accepted
+`MaxScanHeight=13780` is the 350 mm model/ADF limit. r23 requested Legal
+length (355.6 mm) and raised `dwMaxScanRaster` to 4200 rows at 300 dpi. The
+device still ended normally after exactly 3437 raster packets. This matches
+the backend's original `MFCSCAN600FBRASTER=6874` limit divided by two at 300 dpi
+and the calibrated flatbed length `MFCSCANFBHEIGHT=2910` (291 mm). The Windows
+`ScanOriginY + TopMargin=236` thou subtracts about 6 mm from the 297 mm glass.
+r24 therefore uses 11457 thou (291 mm) as the flatbed output height and leaves
+the raster cap intact, avoiding synthetic white rows beyond the received scan.
+The r20 hardware scan accepted
 `A=0,0,2544,4086`, reported `row_bytes=2544`, `max_pixels=2550`, and returned
 3437 raster rows. With the old 4086-row request, 649 rows were synthesized as
-white at EOF. r22 reduced that padding; the r23 Legal probe will report actual
-received rows separately from any EOF padding, showing whether raising the
-device clamp changes carriage output. r21 tests the next
+white at EOF; the r23 4200-row request produced 763 white rows. r24's 291 mm
+frame is 3437 rows at 300 dpi, aligning the SANE frame with the received
+flatbed raster. r21 tests the next
 horizontal range beyond the glass; its aligned width is 2576 dots. Its test
 image is 2576 pixels wide and contains edge marks through x=2572, so the
 current sample does not show horizontal clipping in the emitted SANE frame.
