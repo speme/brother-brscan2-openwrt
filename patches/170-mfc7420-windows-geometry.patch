@@ -28,7 +28,7 @@
 +		LONG right_offset, bottom_offset, left_offset, top_offset;
 +		LONG max_width, max_height, full_width;
 +		LONG expand_full_frame = 1;
-+		LONG full_frame_width = 8500;
++		LONG full_frame_width = 8577;
 +		FILE *geometry = fopen("/etc/sane.d/brother2-geometry.conf", "r");
 +		char line[128];
 +		if (geometry) {

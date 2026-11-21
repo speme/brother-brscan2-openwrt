@@ -16,25 +16,28 @@ MaxScanHeight=13780
 The TWAIN DLL's geometry routines subtract `ScanOriginX + LeftMargin` from the document's right edge and `ScanOriginY + TopMargin` from its bottom edge. If a margin exceeds the corresponding origin, the near edge begins at `Margin - Origin`. For the MFC-7420 defaults the near edge stays at `(0,0)` and the far edge is reduced by 77 and 236 thousandths of an inch. At 300 dpi that is about 23 horizontal dots and 71 vertical dots.
 
 The Linux backend retains the Windows crop values, but full-frame requests
-whose top-left is `(0,0)` default to an expanded exploratory range:
-`ExpandFullFrame=1` requests the physical flatbed glass width of 215.9 mm
-(`MaxDocWidth=8500`) and the 350.0 mm model height. This exceeds Windows
-`MaxScanWidth=8347` (about 212.0 mm). r20 also raises the backend's queried
-horizontal pixel cap and rounds width outward through SANE's 0.1 mm units,
-testing the effect of `ScanCmdAdjustWidth=2` for a zero left edge. The scanner
-may still reject or clamp this wider request. Set `ExpandFullFrame=0` in
+whose top-left is `(0,0)` default to an expanded exploratory range. r20
+requested the 215.9 mm flatbed glass width and the 350.0 mm model height.
+r21 extends the horizontal request by Windows `ScanOriginX=77` (1.9558 mm),
+to 8577 thousandths of an inch, about 217.9 mm. This probes whether that
+origin offset corresponds to usable area outside the nominal glass width.
+The backend raises the queried horizontal pixel cap and rounds width outward
+through SANE's 0.1 mm units, testing `ScanCmdAdjustWidth=2` for a zero left
+edge. The scanner may return blank overscan or clamp the request. Set
+`ExpandFullFrame=0` in
 `/etc/sane.d/brother2-geometry.conf` to apply the Windows origin/margin crop
 and retain the queried width cap. This applies only to USB product
 `04f9:0180`, flatbed source, and a zero left/top request; other models and ADF
 scans are untouched.
 
-With full-range mode enabled, the nominal request is about 215.9 x 350.0 mm.
-At 300 dpi that is roughly 2550 x 4134 pixels before 16-dot alignment and
+With r21 full-range mode enabled, the nominal request is about 217.9 x 350.0 mm.
+At 300 dpi that is roughly 2574 x 4134 pixels before 16-dot alignment and
 vertical raster clamping. The r20 hardware scan accepted
 `A=0,0,2544,4086`, reported `row_bytes=2544`, `max_pixels=2550`, and returned
 3437 raster rows. This confirms the wider horizontal request produces data;
 the remaining 649 rows are padding. The aligned width is about 215.4 mm, close
-to the 215.9 mm glass width. The output includes blank area beyond A4.
+to the 215.9 mm glass width. r21 tests the next range beyond the glass; its
+expected aligned width is 2576 dots. The output includes blank area beyond A4.
 
 ## Why this changes the scan origin handling
 
