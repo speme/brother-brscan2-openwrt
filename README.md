@@ -1,5 +1,12 @@
 # Brother brscan2 for OpenWrt
 
+## Current release: R2 (version reset)
+
+This R2 replaces the earlier GitHub release history from R2 through R25. It
+contains the current MFC-7420 driver, including the Letter-width flatbed fix
+validated by a 100 dpi scan (864-pixel output width). The OpenWrt package
+version is `0.2.5-r2`.
+
 This package targets OpenWrt 25.12.6 on Lenovo Newifi Y1 (`ramips/mt7620`,
 `mipsel_24kc`) and adds Brother's SANE `brscan2` backend for MFC-7420 USB
 scanners (`04f9:0180`). The prebuilt OpenWrt APK and Ubuntu test DEB are

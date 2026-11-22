@@ -1,0 +1,4 @@
+--- a/brscan/backend_src/brother_bugchk.c
++++ b/brscan/backend_src/brother_bugchk.c
+@@ -133,0 +134 @@
++	free((char *)ptr - sizeof(size_t) - sizeof(BUGCHK_SIGN));

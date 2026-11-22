@@ -1,0 +1,15 @@
+--- a/brscan/backend_src/brother2.c
++++ b/brscan/backend_src/brother2.c
+@@ -1035,6 +1035,12 @@
+ 
+           if ((rc = SetupScanMode( this, id )) != SANE_STATUS_GOOD)
+             return rc;
++          if (this->aoptVal[optMode].s)
++            free(this->aoptVal[optMode].s);
++          this->aoptVal[optMode].s = strdup(canonical);
++          if (!this->aoptVal[optMode].s)
++            return SANE_STATUS_NO_MEM;
++          fprintf(stderr, "brother2 mode selected: %s id=%d\n", canonical, id);
+           break;
+ 
+ 	case optScanSrc:

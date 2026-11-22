@@ -1,0 +1,163 @@
+--- a/brscan/backend_src/brother_modelinf.c
++++ b/brscan/backend_src/brother_modelinf.c
+@@ -49,6 +49,7 @@
+ 
+ #include	<stdio.h>
+ #include	<string.h>
++#include	<strings.h>
+ #include	<stdlib.h>
+ #include	<ctype.h>
+ 
+@@ -109,15 +110,16 @@
+ static int modelListGetEnable = FALSE;
+ 
+ 
+-static const char bwString[]            = "Black & White";
+-static const char errDiffusionString[]  = "Gray[Error Diffusion]";
+-static const char tGrayString[]         = "True Gray";
+-static const char ColorString[]       = "24bit Color";
+-static const char ColorFastString[]   = "24bit Color[Fast]";
+-
+-static const char fbString[] = "FlatBed";
+-static const char adfString[] = "Automatic Document Feeder";
+-static const char adfdupString[] = "Automatic Document Feeder(Duplex)";  //06/02/27
++/* Advertise conventional SANE names; parsers retain legacy aliases. */
++static const char bwString[]            = "Lineart";
++static const char errDiffusionString[]  = "Gray (Error Diffusion)";
++static const char tGrayString[]         = "Gray";
++static const char ColorString[]         = "Color";
++static const char ColorFastString[]     = "Color (Fast)";
++
++static const char fbString[] = "Flatbed";
++static const char adfString[] = "ADF";
++static const char adfdupString[] = "ADF Duplex";  //06/02/27
+ 
+ #define MAX_PATH 260
+ 
+@@ -2287,22 +2289,38 @@
+ 
+ int get_scanmode_id(const char *scanmode)
+ {
+-	int res;
+-
+-	if( 0 ==strcmp(scanmode,bwString))				/* Black&White? */
+-		res = COLOR_BW;
+-	else if( 0 == strcmp(scanmode, errDiffusionString))		/* Gray(ErrorDiffusion)? */
+-		res = COLOR_ED;
+-	else if( 0 == strcmp(scanmode, tGrayString))			/* TrueGray? */
+-		res = COLOR_TG;
+-	else if( 0 == strcmp(scanmode, ColorString))				/* 24bitColor? */
+-		res = COLOR_FUL;
+-	else if( 0 == strcmp(scanmode, ColorFastString))				/* 24bitColorFast? */
+-		res = COLOR_FUL_NOCM;
+-	else
+-		res = -1;		/* Error */
+-
+-	return res;
++	if (!scanmode)
++		return -1;
++	if (!strcasecmp(scanmode, bwString) ||
++	    !strcasecmp(scanmode, "Line Art") ||
++	    !strcasecmp(scanmode, "Black & White") ||
++	    !strcasecmp(scanmode, "Black and White") ||
++	    !strcasecmp(scanmode, "B&W"))
++		return COLOR_BW;
++	if (!strcasecmp(scanmode, errDiffusionString) ||
++	    !strcasecmp(scanmode, "Gray[Error Diffusion]") ||
++	    !strcasecmp(scanmode, "Grey (Error Diffusion)") ||
++	    !strcasecmp(scanmode, "Error Diffusion Gray"))
++		return COLOR_ED;
++	if (!strcasecmp(scanmode, tGrayString) ||
++	    !strcasecmp(scanmode, "Grey") ||
++	    !strcasecmp(scanmode, "Grayscale") ||
++	    !strcasecmp(scanmode, "Greyscale") ||
++	    !strcasecmp(scanmode, "True Gray") ||
++	    !strcasecmp(scanmode, "True Grey"))
++		return COLOR_TG;
++	if (!strcasecmp(scanmode, ColorString) ||
++	    !strcasecmp(scanmode, "Colour") ||
++	    !strcasecmp(scanmode, "24bit Color") ||
++	    !strcasecmp(scanmode, "24-bit Color") ||
++	    !strcasecmp(scanmode, "24bit Colour"))
++		return COLOR_FUL;
++	if (!strcasecmp(scanmode, ColorFastString) ||
++	    !strcasecmp(scanmode, "24bit Color[Fast]") ||
++	    !strcasecmp(scanmode, "24-bit Color (Fast)") ||
++	    !strcasecmp(scanmode, "Color Fast"))
++		return COLOR_FUL_NOCM;
++	return -1;
+ }
+ 
+ /*
+@@ -2367,18 +2385,20 @@
+ 
+ int get_scansrc_id(const char *scanSrc)
+ {
+-	int res;
+-
+-	if( 0 ==strcmp(scanSrc,fbString))				/* FlatBed? */
+-		res = SCANSRC_FB;
+-	else if( 0 == strcmp(scanSrc, adfString))		/* Auto Document Feeder? */
+-		res = SCANSRC_ADF;
+-	else if( 0 == strcmp(scanSrc, adfdupString))		/* Duplex? */
+-		res = SCANSRC_ADF_DUP;
+-	else
+-		res = -1;	       /* error */
+-
+-	return res;
++	if (!scanSrc)
++		return -1;
++	if (!strcasecmp(scanSrc, fbString) || !strcasecmp(scanSrc, "FlatBed") ||
++	    !strcasecmp(scanSrc, "Flat Bed"))
++		return SCANSRC_FB;
++	if (!strcasecmp(scanSrc, adfString) ||
++	    !strcasecmp(scanSrc, "Automatic Document Feeder") ||
++	    !strcasecmp(scanSrc, "Document Feeder"))
++		return SCANSRC_ADF;
++	if (!strcasecmp(scanSrc, adfdupString) ||
++	    !strcasecmp(scanSrc, "Automatic Document Feeder (Duplex)") ||
++	    !strcasecmp(scanSrc, "Automatic Document Feeder(Duplex)"))
++		return SCANSRC_ADF_DUP;
++	return -1;
+ }
+ 
+ /*
+--- a/brscan/backend_src/brother2.c
++++ b/brscan/backend_src/brother2.c
+@@ -944,6 +944,7 @@
+   SANE_Status rc;
+   Brother_Scanner *this;
+   int id;
++  char canonical[MAX_STRING];
+ 
+   WriteLog( "<<< sane_control_option start >>> " );
+ 
+@@ -990,6 +991,27 @@
+         return SANE_STATUS_INVAL;
+       if (!SANE_OPTION_IS_SETTABLE(cap))
+ 	  return SANE_STATUS_INVAL;
++
++      /* Normalize SANE names and legacy Brother labels before constraints. */
++      if (iOpt == optMode)
++        {
++          id = get_scanmode_id((const char *)pVal);
++          if (id < 0 || !ScanModeIDString(id, canonical))
++            return SANE_STATUS_INVAL;
++          if (get_scanmode_listcnt(scanModeList, id) < 0)
++            return SANE_STATUS_INVAL;
++          strcpy((char *)pVal, canonical);
++        }
++      else if (iOpt == optScanSrc)
++        {
++          id = get_scansrc_id((const char *)pVal);
++          if (id < 0 || !ScanSrcIDString(id, canonical))
++            return SANE_STATUS_INVAL;
++          if (get_scansrc_listcnt(scanSrcList, id) < 0)
++            return SANE_STATUS_INVAL;
++          strcpy((char *)pVal, canonical);
++        }
++
+       rc=sanei_constrain_value(this->aoptDesc+iOpt,pVal,pnInfo);
+       if (rc!=SANE_STATUS_GOOD)
+ 	  return rc;
+

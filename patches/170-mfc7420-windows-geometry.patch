@@ -10,7 +10,7 @@
  #include "sane/sane.h"
  
  #include "brother_dtype.h"
-@@ -1823,4 +1827,89 @@ GetScanAreaParam( Brother_Scanner *this )
+@@ -1823,4 +1827,97 @@ GetScanAreaParam( Brother_Scanner *this )
  	this->scanInfo.ScanAreaMm = this->uiSetting.ScanAreaMm;
 +	/*
 +	 * Port the MFC-7420 values and coordinate mapping from its Windows TWAIN
@@ -28,8 +28,9 @@
 +		LONG right_offset, bottom_offset, left_offset, top_offset;
 +		LONG max_width, max_height, full_width, full_height;
 +		LONG expand_full_frame = 1;
++		LONG max_doc_width = 8500;
 +		/* TWAIN CalcScanAreaFromDocSize clips Legal width to MaxScanWidth. */
-+		LONG full_frame_width = 8347;
++		LONG full_frame_width = 8500;
 +		LONG full_frame_height = 13764;
 +		FILE *geometry = fopen("/etc/sane.d/brother2-geometry.conf", "r");
 +		char line[128];
@@ -48,12 +49,17 @@
 +				else if (!strcmp(line, "TopMargin")) top_margin = value;
 +				else if (!strcmp(line, "MaxScanWidth")) max_scan_width = value;
 +				else if (!strcmp(line, "MaxScanHeight")) max_scan_height = value;
++				else if (!strcmp(line, "MaxDocWidth")) max_doc_width = value;
 +				else if (!strcmp(line, "ExpandFullFrame")) expand_full_frame = value ? 1 : 0;
 +				else if (!strcmp(line, "FullFrameWidth")) full_frame_width = value;
 +				else if (!strcmp(line, "FullFrameHeight")) full_frame_height = value;
 +			}
 +			fclose(geometry);
 +		}
++		/* Migrate the original package default, which was incorrectly set to
++		 * MaxScanWidth and therefore clipped Letter scans to about 212 mm. */
++		if (full_frame_width == 8347 && max_scan_width == 8347)
++			full_frame_width = max_doc_width;
 +		/* 1 thou = 0.254 units of 0.1 mm; keep model caps outward. */
 +		max_width = (max_scan_width * 254L + 500L) / 1000L;
 +		max_height = (max_scan_height * 254L) / 1000L;
@@ -63,27 +69,29 @@
 +			this->scanInfo.ScanAreaMm.right = max_width;
 +		if (this->scanInfo.ScanAreaMm.bottom > max_height)
 +			this->scanInfo.ScanAreaMm.bottom = max_height;
-+		/* Apply the document envelope only when the caller asked for full area. */
-+		if (expand_full_frame &&
-+		    this->scanInfo.ScanAreaMm.right >= max_width &&
-+		    this->scanInfo.ScanAreaMm.bottom >= max_height) {
++		/* Expand requested full axes independently; Letter is full width even
++		 * when its height is below the Legal flatbed envelope. */
++		if (expand_full_frame && this->scanInfo.ScanAreaMm.right >= max_width)
 +			this->scanInfo.ScanAreaMm.right = full_width;
-+			this->scanInfo.ScanAreaMm.bottom = full_height;
-+		} else {
++		else {
 +		/* Keep sub-0.1 mm precision and round corrected far edges outward. */
 +		right_offset = (scan_origin_x + left_margin) * 254L;
-+		bottom_offset = (scan_origin_y + top_margin) * 254L;
 +		left_offset = left_margin > scan_origin_x ?
 +			((left_margin - scan_origin_x) * 254L + 999L) / 1000L : 0;
-+		top_offset = top_margin > scan_origin_y ?
-+			((top_margin - scan_origin_y) * 254L + 999L) / 1000L : 0;
 +		this->scanInfo.ScanAreaMm.left += left_offset;
-+		this->scanInfo.ScanAreaMm.top += top_offset;
 +		if (this->scanInfo.ScanAreaMm.right * 1000L > right_offset)
 +			this->scanInfo.ScanAreaMm.right =
 +				(this->scanInfo.ScanAreaMm.right * 1000L - right_offset + 999L) / 1000L;
 +		else
 +			this->scanInfo.ScanAreaMm.right = this->scanInfo.ScanAreaMm.left;
++		}
++		if (expand_full_frame && this->scanInfo.ScanAreaMm.bottom >= max_height)
++			this->scanInfo.ScanAreaMm.bottom = full_height;
++		else {
++		bottom_offset = (scan_origin_y + top_margin) * 254L;
++		top_offset = top_margin > scan_origin_y ?
++			((top_margin - scan_origin_y) * 254L + 999L) / 1000L : 0;
++		this->scanInfo.ScanAreaMm.top += top_offset;
 +		if (this->scanInfo.ScanAreaMm.bottom * 1000L > bottom_offset)
 +			this->scanInfo.ScanAreaMm.bottom =
 +				(this->scanInfo.ScanAreaMm.bottom * 1000L - bottom_offset + 999L) / 1000L;

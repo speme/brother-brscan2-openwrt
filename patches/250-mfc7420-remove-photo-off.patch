@@ -1,0 +1,7 @@
+--- a/brscan/backend_src/brother_mfccmd.c
++++ b/brscan/backend_src/brother_mfccmd.c
+@@ -244 +244,3 @@
+-	strcat( lpszCmdStr, MFCMD_PHOTOMODE_OFF );
++	/* The Windows WIA command builder omits P=OFF for this model. */
++	if (this->modelInf.productID != 0x0180)
++		strcat( lpszCmdStr, MFCMD_PHOTOMODE_OFF );

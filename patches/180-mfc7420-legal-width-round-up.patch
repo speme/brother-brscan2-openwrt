@@ -1,6 +1,33 @@
 --- a/brscan/backend_src/brother_scanner.c
 +++ b/brscan/backend_src/brother_scanner.c
-@@ -2082,2 +2082,7 @@ GetDeviceScanArea( Brother_Scanner *this, LPAREARECT lpScanAreaDot )
+@@ -2091,1 +2091,26 @@
+ 	lMaxScanPixels = this->devScanInfo.dwMaxScanPixels;
++	/* Windows TWAIN permits a 8500-thou document width. Raise only the
++	 * MFC-7420 flatbed cap, then keep its 16-dot outward alignment below. */
++	if (this->modelInf.productID == 0x0180 &&
++	    this->devScanInfo.wScanSource == MFCSCANSRC_FB) {
++		LONG doc_width = 8500, doc_pixels;
++		FILE *geometry = fopen("/etc/sane.d/brother2-geometry.conf", "r");
++		char line[128];
++		if (geometry) {
++			while (fgets(line, sizeof(line), geometry)) {
++				if (!strncmp(line, "MaxDocWidth=", 12)) {
++					long value = strtol(line + 12, NULL, 10);
++					if (value > 0 && value <= 50000) doc_width = value;
++				}
++			}
++			fclose(geometry);
++		}
++		doc_pixels = (doc_width * this->devScanInfo.DeviceScan.wResoX + 999L) / 1000L;
++		doc_pixels = (doc_pixels + 0xF) & 0xFFF0;
++		if (doc_pixels > lMaxScanPixels) {
++			fprintf(stderr, "brother2 MFC-7420 width cap: reported=%ld TWAIN=%ld dpi=%u\n",
++			        (long)lMaxScanPixels, (long)doc_pixels,
++			        (unsigned)this->devScanInfo.DeviceScan.wResoX);
++			lMaxScanPixels = doc_pixels;
++		}
++	}
+@@ -2082,2 +2107,7 @@ GetDeviceScanArea( Brother_Scanner *this, LPAREARECT lpScanAreaDot )
  	lpScanAreaDot->left  = ( lpScanAreaDot->left  + 0x8 ) & 0xFFF0;
 -	lpScanAreaDot->right = ( lpScanAreaDot->right + 0x8 ) & 0xFFF0;
 +	if (this->modelInf.productID == 0x0180 &&
